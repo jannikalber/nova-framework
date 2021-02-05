@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Copyright (c) 2021 by Jannik Alber.
+  All rights reserved.
+  -->
+
+<ui version="4.0" connectslotsbyname="false">
+	<class>Workbench</class>
+	
+	<widget class="QMainWindow" name="Workbench">
+		<property name="geometry">
+			<rect>
+				<x>0</x>
+				<y>0</y>
+				<width>920</width>
+				<height>640</height>
+			</rect>
+		</property>
+		
+		<widget class="QTabWidget">
+			<property name="movable">
+				<bool>true</bool>
+			</property>
+			
+			<property name="tabsClosable">
+				<bool>true</bool>
+			</property>
+		</widget>
+		
+		<widget class="QMenuBar">
+			<widget class="QMenu" name="mnuFile">
+				<property name="title">
+					<string>&amp;File</string>
+				</property>
+			</widget>
+			
+			<widget class="QMenu" name="mnuEdit">
+				<property name="title">
+					<string>&amp;Edit</string>
+				</property>
+			</widget>
+			
+			<widget class="QMenu" name="mnuHelp">
+				<property name="title">
+					<string>&amp;Help</string>
+				</property>
+			</widget>
+			
+			<addaction name="mnuFile" />
+			<addaction name="mnuEdit" />
+			<addaction name="mnuHelp" />
+		</widget>
+	</widget>
+</ui>
