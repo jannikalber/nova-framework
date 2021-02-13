@@ -6,6 +6,20 @@
 #ifndef NOVA_FRAMEWORK_NOVA_H
 #define NOVA_FRAMEWORK_NOVA_H
 
+/**
+ * @mainpage
+ *
+ * Nova is an additional library for [Qt5](https://www.qt.io). Its goal is to simplify the
+ * development of modern applications by providing a prefabricated Ui layout and common tools
+ * like settings dialogs. Nova also supports plugins.
+ *
+ * **Note:** This library requires Qt5.
+ *
+ * ---
+ * Nova is licensed under the [GNU General Public License v3.0](https://www.gnu.org/licenses/gpl-3.0.de.html). @n
+ * Copyright (c) by Jannik Alber
+ */
+
 #ifdef _MSC_VER
 	#ifdef novaf_EXPORTS
 		#define NOVA_API __declspec(dllexport)
@@ -16,9 +30,19 @@
 	#define NOVA_API
 #endif
 
+/**
+ * @brief Nova library namespace
+ */
 namespace nova {
 	class Workbench;
 	
+	/**
+	 * @brief Points to the active workbench window.
+	 *
+	 * If two windows are created, it points to the last window being created.
+	 *
+	 * @sa nova::Workbench::Workbench(QWidget*)
+	 */
 	extern NOVA_API Workbench* workbench;
 }
 

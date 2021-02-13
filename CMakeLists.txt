@@ -3,13 +3,16 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-project(nova-framework LANGUAGES CXX VERSION 1.0)
+project(nova-framework
+        LANGUAGES CXX
+        VERSION 1.0)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Qt
-find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
+find_package(Qt5 REQUIRED
+             COMPONENTS Core Gui Widgets)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -22,8 +25,16 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS res/)
 option(NOVA_TESTS "If CMake should also build/provide tests for Nova." OFF)
 mark_as_advanced(NOVA_TESTS)
 if(NOVA_TESTS)
-	enable_testing()
 	add_subdirectory(test/)
+endif()
+
+# Documentation
+find_package(Doxygen)
+if(Doxygen_FOUND)
+	set(DOXYGEN_PROJECT_NAME "Nova Framework")
+	set(DOXYGEN_MACRO_EXPANSION Yes)
+	
+	doxygen_add_docs(docs include/)
 endif()
 
 # Target
