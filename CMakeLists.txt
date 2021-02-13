@@ -3,7 +3,7 @@
 
 cmake_minimum_required(VERSION 3.10)
 
-project(nova-framework
+project(NovaFramework
         LANGUAGES CXX
         VERSION 1.0)
 
@@ -31,15 +31,43 @@ endif()
 # Documentation
 find_package(Doxygen)
 if(Doxygen_FOUND)
+	option(NOVA_INSTALL_DOC "If Nova's documentation should be installed and built everytime." OFF)
+	mark_as_advanced(NOVA_INSTALL_DOC)
+	
 	set(DOXYGEN_PROJECT_NAME "Nova Framework")
+	set(DOXYGEN_SHOW_FILES No)
+	set(DOXYGEN_SHOW_USED_FILES No)
 	set(DOXYGEN_MACRO_EXPANSION Yes)
 	
-	doxygen_add_docs(docs include/)
+	if(NOVA_INSTALL_DOC)
+		doxygen_add_docs(doc include/ ALL)
+		install(DIRECTORY ${CMAKE_BINARY_DIR}/html/
+		        DESTINATION doc/)
+	else()
+		doxygen_add_docs(doc include/)
+	endif()
 endif()
 
 # Target
-add_library(novaf SHARED include/nova.h
-            include/workbench.h src/workbench.cpp)
+set(NOVA_PUBLIC_HEADERS
+    include/nova.h
+    include/workbench.h)
+add_library(Nova SHARED
+            src/workbench.cpp)
 
-target_include_directories(novaf PUBLIC include/)
-target_link_libraries(novaf PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
+set_target_properties(Nova PROPERTIES
+                      OUTPUT_NAME novaf
+                      PUBLIC_HEADER "${NOVA_PUBLIC_HEADERS}")
+target_include_directories(Nova PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+                           $<INSTALL_INTERFACE:include/>)
+target_link_libraries(Nova PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
+
+# Installation rules
+install(TARGETS Nova
+        EXPORT NovaFrameworkConfig
+        ARCHIVE DESTINATION lib/
+        LIBRARY DESTINATION lib/
+        RUNTIME DESTINATION bin/
+        PUBLIC_HEADER DESTINATION include/nova/)
+install(EXPORT NovaFrameworkConfig
+        DESTINATION lib/cmake/)

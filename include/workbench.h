@@ -21,6 +21,7 @@ QT_END_NAMESPACE
 namespace nova {
 	/**
 	 * @brief This class represents the main window of the application.
+	 * @headerfile workbench.h <nova/workbench.h>
 	 *
 	 * The workbench has a prefabricated Ui layout. Its content is a tab widget. One can add content types
 	 * which can be displayed in this widget. The window also contains areas for tool windows, menus and

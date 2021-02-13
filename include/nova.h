@@ -21,7 +21,7 @@
  */
 
 #ifdef _MSC_VER
-	#ifdef novaf_EXPORTS
+	#ifdef Nova_EXPORTS
 		#define NOVA_API __declspec(dllexport)
 	#else
 		#define NOVA_API __declspec(dllimport)
