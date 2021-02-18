@@ -28,28 +28,7 @@
 			</property>
 		</widget>
 		
-		<widget class="QMenuBar">
-			<widget class="QMenu" name="mnuFile">
-				<property name="title">
-					<string>&amp;File</string>
-				</property>
-			</widget>
-			
-			<widget class="QMenu" name="mnuEdit">
-				<property name="title">
-					<string>&amp;Edit</string>
-				</property>
-			</widget>
-			
-			<widget class="QMenu" name="mnuHelp">
-				<property name="title">
-					<string>&amp;Help</string>
-				</property>
-			</widget>
-			
-			<addaction name="mnuFile" />
-			<addaction name="mnuEdit" />
-			<addaction name="mnuHelp" />
-		</widget>
+		<widget class="QMenuBar" />
+		<widget class="QStatusBar" />
 	</widget>
 </ui>
