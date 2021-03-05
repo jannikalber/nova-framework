@@ -8,6 +8,7 @@
 #include <QtWidgets/QApplication>
 
 #include "ui_workbench.h"
+#include "actionprovider.h"
 
 namespace nova {
 	Workbench* workbench;
@@ -22,15 +23,14 @@ namespace nova {
 		delete ui;
 	}
 	
-	QMenu* Workbench::ConstructMenu(const QString& title) {
-		auto* menu = new QMenu(this);
-		menu->setTitle(title);
+	MenuActionProvider* Workbench::ConstructMenu(const QString& title) {
+		auto* menu = new MenuActionProvider(title, this);
 		menuBar()->addMenu(menu);
 		
 		return menu;
 	}
 	
-	QMenu* Workbench::ConstructMenu(Workbench::StandardMenu standard_menu) {
+	MenuActionProvider* Workbench::ConstructMenu(Workbench::StandardMenu standard_menu) {
 		switch (standard_menu) {
 			case File:
 				menu_file = ConstructMenu(QApplication::translate("nova/menu", "&File"));
@@ -49,14 +49,14 @@ namespace nova {
 		}
 	}
 	
-	QMenu* Workbench::get_standard_menu(Workbench::StandardMenu standard_menu) {
+	MenuActionProvider* Workbench::get_standard_menu(Workbench::StandardMenu standard_menu) {
 		switch (standard_menu) {
 			case File:
 				return menu_file;
-				
+			
 			case Edit:
 				return menu_edit;
-				
+			
 			case Help:
 				return menu_help;
 			

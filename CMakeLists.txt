@@ -51,9 +51,11 @@ endif()
 # Target
 set(NOVA_PUBLIC_HEADERS
     include/nova.h
-    include/workbench.h)
+    include/workbench.h
+    include/actionprovider.h)
 add_library(Nova SHARED
-            src/workbench.cpp)
+            src/workbench.cpp
+            src/actionprovider.cpp)
 
 set_target_properties(Nova PROPERTIES
                       OUTPUT_NAME novaf

@@ -41,7 +41,7 @@ namespace nova {
 	 *
 	 * If two windows are created, it points to the last window being created.
 	 *
-	 * @sa nova::Workbench::Workbench(QWidget*)
+	 * @sa Workbench::Workbench()
 	 */
 	extern NOVA_API Workbench* workbench;
 }

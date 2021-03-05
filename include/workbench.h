@@ -14,12 +14,13 @@
 QT_USE_NAMESPACE
 QT_BEGIN_NAMESPACE
 class QWidget;
-class QMenu;
 
 namespace Ui { class Workbench; }
 QT_END_NAMESPACE
 
 namespace nova {
+	class MenuActionProvider;
+	
 	/**
 	 * @brief This class represents the main window of the application.
 	 * @headerfile workbench.h <nova/workbench.h>
@@ -53,7 +54,7 @@ namespace nova {
 			 * Constructs a new workbench. The constructor should only be called once in one application.
 			 * Calling this constructor updates automatically the reference of nova::workbench.
 			 *
-			 * @param parent The parent window which blocks its input until the workbench window is closed
+			 * @param parent: The parent window which blocks its input until the workbench window is closed
 			 * @sa nova::workbench
 			 */
 			explicit Workbench(QWidget* parent = nullptr);
@@ -67,33 +68,35 @@ namespace nova {
 			 *
 			 * The order of the menu entries is analog to the calls' order of this method.
 			 *
-			 * @param title The menu's title shown in the menu bar
+			 * @param title The menu's title shown in the menu bar (it might contain the hotkey character ```&```)
 			 * @return A pointer to the created menu
 			 */
-			QMenu* ConstructMenu(const QString& title);
+			MenuActionProvider* ConstructMenu(const QString& title);
 			/**
 			 * @brief Constructs one of the standard menus and displays it in the menu bar.
 			 *
+			 * This function overloads ConstructMenu()
+			 *
 			 * @return A pointer to the created menu
 			 *
-			 * @sa ConstructMenu(const QString&)
-			 * @sa get_standard_menu(StandardMenu)
+			 * @sa ConstructMenu()
+			 * @sa get_standard_menu()
 			 */
-			QMenu* ConstructMenu(StandardMenu standard_menu);
+			MenuActionProvider* ConstructMenu(StandardMenu standard_menu);
 			
 			/**
-			 * @brief Returns the given standard menu which was created using ConstructMenu(StandardMenu).
+			 * Returns the given standard menu which was created using ConstructMenu(StandardMenu).
 			 *
 			 * @return The menu or ```nullptr``` if the menu is never constructed
 			 */
-			QMenu* get_standard_menu(StandardMenu standard_menu);
+			MenuActionProvider* get_standard_menu(StandardMenu standard_menu);
 		
 		private:
 			Ui::Workbench* ui;
 			
-			QMenu* menu_file;
-			QMenu* menu_edit;
-			QMenu* menu_help;
+			MenuActionProvider* menu_file;
+			MenuActionProvider* menu_edit;
+			MenuActionProvider* menu_help;
 	};
 }
 

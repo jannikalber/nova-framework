@@ -8,15 +8,19 @@
 #include <QtWidgets/QAction>
 
 #include <workbench.h>
+#include <actionprovider.h>
 
 class Workbench : public nova::Workbench {
 	public:
-		Workbench() : nova::Workbench() {
+		inline Workbench() : nova::Workbench() {
 			ConstructMenu(Workbench::File);
-			ConstructMenu(Workbench::Edit);
+			nova::MenuActionProvider* menu_edit = ConstructMenu(Workbench::Edit);
 			ConstructMenu(Workbench::Help);
+			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Help);
 			
-			get_standard_menu(Workbench::Help)->addAction("Test");
+			menu_edit->ShowAction(menu_edit->ConstructAction("Edit Demo &1"));
+			menu_edit->ShowAction(menu_edit->ConstructAction("Edit Demo &2"), true);
+			menu_help->ShowAction(menu_help->ConstructAction("Help &Demo"));
 		}
 };
 
