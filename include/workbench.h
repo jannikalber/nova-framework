@@ -14,6 +14,7 @@
 QT_USE_NAMESPACE
 QT_BEGIN_NAMESPACE
 class QWidget;
+class QAction;
 
 namespace Ui { class Workbench; }
 QT_END_NAMESPACE
@@ -38,16 +39,31 @@ namespace nova {
 			/**
 			 * @brief A list of menus needed in nearly every application:
 			 *
-			 * - File (title: ```&File```)
-			 * - Edit (title: ```&Edit```)
-			 * - Help (title: ```&Help```)
+			 * - File (title: "&File")
+			 * - Edit (title: "&Edit")
+			 * - Help (title: "&Help")
 			 *
-			 * Translate the titles using this context: ```nova/menu```.
+			 * The translations belong to the context "nova/menu".
 			 *
 			 * @sa ConstructMenu(StandardMenu)
 			 */
 			enum StandardMenu {
 				File, Edit, Help
+			};
+			
+			/**
+			 * @brief A list of standard actions which are handled by Nova:
+			 *
+			 * - Exit [Ctrl+Q] (title: "&Exit")
+			 * - Direct Help, QWhatsThis [F2] (title: "&Direct Help")
+			 * - Search bar for browsing the application's actions
+			 *
+			 * The translations belong to the context "nova/action".
+			 *
+			 * @sa ConstructStandardAction()
+			 */
+			enum StandardAction {
+				Exit, DirectHelp, SearchBar
 			};
 			
 			/**
@@ -61,6 +77,9 @@ namespace nova {
 			Workbench(const Workbench&) = delete;
 			Workbench(Workbench&&) = delete;
 			
+			/**
+			 * Destructs the workbench and also its QObject children.
+			 */
 			virtual ~Workbench() noexcept;
 			
 			/**
@@ -68,7 +87,7 @@ namespace nova {
 			 *
 			 * The order of the menu entries is analog to the calls' order of this method.
 			 *
-			 * @param title The menu's title shown in the menu bar (it might contain the hotkey character ```&```)
+			 * @param title The menu's title shown in the menu bar (it might contain the hotkey character "&")
 			 * @return A pointer to the created menu
 			 */
 			MenuActionProvider* ConstructMenu(const QString& title);
@@ -77,7 +96,7 @@ namespace nova {
 			 *
 			 * This function overloads ConstructMenu()
 			 *
-			 * @return A pointer to the created menu
+			 * @return A pointer to the created menu or nullptr if standard_menu is invalid
 			 *
 			 * @sa ConstructMenu()
 			 * @sa get_standard_menu()
@@ -85,9 +104,18 @@ namespace nova {
 			MenuActionProvider* ConstructMenu(StandardMenu standard_menu);
 			
 			/**
+			 * @brief Constructs one of the standard actions and handles its functionality.
+			 *
+			 * @return A pointer to the created action or nullptr if standard_action is invalid
+			 *
+			 * @sa StandardAction to see a list of available actions
+			 */
+			QAction* ConstructStandardAction(StandardAction standard_action);
+			
+			/**
 			 * Returns the given standard menu which was created using ConstructMenu(StandardMenu).
 			 *
-			 * @return The menu or ```nullptr``` if the menu is never constructed
+			 * @return The menu or nullptr if the menu is never constructed
 			 */
 			MenuActionProvider* get_standard_menu(StandardMenu standard_menu);
 		

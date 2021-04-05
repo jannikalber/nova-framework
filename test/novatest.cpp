@@ -13,14 +13,15 @@
 class Workbench : public nova::Workbench {
 	public:
 		inline Workbench() : nova::Workbench() {
-			ConstructMenu(Workbench::File);
+			ConstructMenu(Workbench::File)->ShowAction(ConstructStandardAction(Workbench::Exit));
 			nova::MenuActionProvider* menu_edit = ConstructMenu(Workbench::Edit);
 			ConstructMenu(Workbench::Help);
 			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Help);
 			
-			menu_edit->ShowAction(menu_edit->ConstructAction("Edit Demo &1"));
-			menu_edit->ShowAction(menu_edit->ConstructAction("Edit Demo &2"), true);
-			menu_help->ShowAction(menu_help->ConstructAction("Help &Demo"));
+			menu_edit->ShowAction(menu_edit->ConstructAction("&Edit Demo"));
+			menu_help->ShowAction(ConstructStandardAction(Workbench::SearchBar));
+			menu_help->ShowAction(ConstructStandardAction(Workbench::DirectHelp), true);
+			menu_help->ShowAction(menu_help->ConstructAction("&Help Demo"));
 		}
 };
 

@@ -5,7 +5,10 @@
 
 #include "workbench.h"
 
+#include <QtGui/QKeySequence>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QAction>
+#include <QtWidgets/QWhatsThis>
 
 #include "ui_workbench.h"
 #include "actionprovider.h"
@@ -47,6 +50,35 @@ namespace nova {
 			default:
 				return nullptr;
 		}
+	}
+	
+	QAction* Workbench::ConstructStandardAction(StandardAction standard_action) {
+		auto* action = new QAction(this);
+		
+		switch (standard_action) {
+			case Exit:
+				action->setText(QApplication::translate("nova/action", "&Exit"));
+				action->setShortcut(QKeySequence("Ctrl+Q"));
+				connect(action, &QAction::triggered, this, &QMainWindow::close);
+				
+				break;
+			
+			case DirectHelp:
+				action->setText(QApplication::translate("nova/action", "&Direct Help"));
+				action->setShortcut(QKeySequence("F2"));
+				connect(action, &QAction::triggered, []() { QWhatsThis::enterWhatsThisMode(); });
+				
+				break;
+			
+			case SearchBar:
+				// TODO: Implement search bar
+				break;
+			
+			default:
+				return nullptr;
+		}
+		
+		return action;
 	}
 	
 	MenuActionProvider* Workbench::get_standard_menu(Workbench::StandardMenu standard_menu) {

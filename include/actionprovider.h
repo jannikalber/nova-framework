@@ -45,7 +45,7 @@ namespace nova {
 			/**
 			 * @brief Constructs an action which is bound to this provider.
 			 *
-			 * @param text The action's title (it might contain the hotkey character ```&```)
+			 * @param text The action's title (it might contain the hotkey character "&")
 			 * @return A pointer to the constructed action
 			 */
 			inline QAction* ConstructAction(const QString& text) {
@@ -83,7 +83,7 @@ namespace nova {
 			/**
 			 * Constructs a new MenuActionProvider
 			 *
-			 * @param title The menu's title (it might contain the hotkey character ```&```)
+			 * @param title The menu's title (it might contain the hotkey character "&")
 			 * @param parent The menu's parent widget
 			 */
 			MenuActionProvider(const QString& title, QWidget* parent);
