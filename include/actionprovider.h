@@ -12,8 +12,6 @@
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QAction>
 
-#include <utility>
-
 #include "nova.h"
 
 QT_USE_NAMESPACE
@@ -37,10 +35,10 @@ namespace nova {
 			 * Initializes the ActionProvider.
 			 *
 			 * @param title The title of the category the provider's actions belong to
-			 * @param window The provider's Workbench
+			 * @param window The provider's Workbench (optional, default: nova::workbench)
 			 */
-			inline explicit ActionProvider(QString title, Workbench* window = workbench) : title(std::move(title)),
-			                                                                               window(window) {}
+			inline explicit ActionProvider(const QString& title, Workbench* window = workbench) : title(title),
+			                                                                                      window(window) {}
 			
 			/**
 			 * @brief Constructs an action which is bound to this provider.
@@ -58,8 +56,9 @@ namespace nova {
 			 * @brief Shows an action in the implementation specific way.
 			 *
 			 * @param action The action to be displayed (consider to construct it with ConstructAction())
-			 * @param separate If a separator should be inserted before inserting the action
+			 * @param separate If a separator should be inserted before inserting the action (optional, default: false)
 			 * @param is_important An important action may be emphasized (this depends also on the type of provider)
+			 * (optional, default: false)
 			 *
 			 * @sa MenuActionProvider::ShowAction()
 			 */

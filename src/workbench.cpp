@@ -81,7 +81,7 @@ namespace nova {
 		return action;
 	}
 	
-	MenuActionProvider* Workbench::get_standard_menu(Workbench::StandardMenu standard_menu) {
+	MenuActionProvider* Workbench::get_standard_menu(Workbench::StandardMenu standard_menu) const {
 		switch (standard_menu) {
 			case File:
 				return menu_file;

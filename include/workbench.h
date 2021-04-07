@@ -70,7 +70,7 @@ namespace nova {
 			 * Constructs a new workbench. The constructor should only be called once in one application.
 			 * Calling this constructor updates automatically the reference of nova::workbench.
 			 *
-			 * @param parent: The parent window which blocks its input until the workbench window is closed
+			 * @param parent: The parent window which blocks its input until the workbench window is closed (optional, default: none)
 			 * @sa nova::workbench
 			 */
 			explicit Workbench(QWidget* parent = nullptr);
@@ -117,7 +117,7 @@ namespace nova {
 			 *
 			 * @return The menu or nullptr if the menu is never constructed
 			 */
-			MenuActionProvider* get_standard_menu(StandardMenu standard_menu);
+			MenuActionProvider* get_standard_menu(StandardMenu standard_menu) const;
 		
 		private:
 			Ui::Workbench* ui;

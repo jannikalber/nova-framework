@@ -52,10 +52,12 @@ endif()
 set(NOVA_PUBLIC_HEADERS
     include/nova.h
     include/workbench.h
-    include/actionprovider.h)
+    include/actionprovider.h
+    include/quickdialog.h)
 add_library(Nova SHARED
             src/workbench.cpp
-            src/actionprovider.cpp)
+            src/actionprovider.cpp
+            src/quickdialog.cpp)
 
 set_target_properties(Nova PROPERTIES
                       OUTPUT_NAME novaf
