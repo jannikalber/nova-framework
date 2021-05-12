@@ -7,11 +7,19 @@
 	<class>QuickDialog</class>
 	
 	<widget class="QDialog" name="QuickDialog">
+		<property name="sizePolicy">
+			<sizepolicy hsizetype="Maximum" vsizetype="Maximum" />
+		</property>
+		
 		<property name="windowFlags">
-			<set>Qt::Popup | Qt::CustomizeWindowHint | Qt::MSWindowsFixedSizeDialogHint</set>
+			<enum>Qt::Popup</enum>
 		</property>
 		
 		<layout class="QVBoxLayout">
+			<property name="sizeConstraint">
+				<enum>QLayout::SetFixedSize</enum>
+			</property>
+			
 			<property name="leftMargin">
 				<number>0</number>
 			</property>

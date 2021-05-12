@@ -6,6 +6,7 @@
 #ifndef NOVA_FRAMEWORK_QUICKDIALOG_H
 #define NOVA_FRAMEWORK_QUICKDIALOG_H
 
+#include <QtCore/QtGlobal>
 #include <QtCore/QString>
 #include <QtCore/QList>
 #include <QtWidgets/QWidget>
@@ -69,7 +70,7 @@ namespace nova {
 			/**
 			 * @brief Returns the current title.
 			 *
-			 * @return the title or an empty string if none is set.
+			 * @return The title or an empty string if none is set.
 			 * @sa set_title()
 			 */
 			inline QString get_title() const { return title; }
@@ -79,7 +80,7 @@ namespace nova {
 			 *
 			 * This method also works when the dialog is already closed.
 			 *
-			 * @return the input widget or nullptr if none is set.
+			 * @return The input widget or nullptr if none is set.
 			 * @sa set_input_widget()
 			 */
 			inline QWidget* get_input_widget() const { return input_widget; }
@@ -93,7 +94,7 @@ namespace nova {
 			 * @param mode is the echo mode the line edit will use (optional, default: QLineEdit::Normal)
 			 * @param default_text is the prefilled text in the line edit (optional, default: none)
 			 *
-			 * @return the line edit's text or an empty string if the dialog was rejected.
+			 * @return The line edit's text or an empty string if the dialog was rejected.
 			 * @sa InputItem()
 			 */
 			static QString InputText(QWidget* parent, const QString& title, const QString& placeholder = "",
@@ -107,9 +108,12 @@ namespace nova {
 			 * @param items The options which can be selected
 			 * @param icons A list of QIcons which are displayed in front of the items. If this list contains more icons than items,
 			 * the last icons of the list are ignored, if the list contains less icons than items, the last items get no icons.
+			 * It's not recommended to have some items without and some with icons.
 			 * (optional, default: no icons)
 			 *
-			 * @return the text of the selected item or an empty string if the dialog was rejected.
+			 * The size of the dialog depends on the count of items.
+			 *
+			 * @return The text of the selected item or an empty string if the dialog was rejected.
 			 * @sa InputText()
 			 */
 			static QString InputItem(QWidget* parent, const QString& title, const QStringList& items,
@@ -123,7 +127,7 @@ namespace nova {
 		
 		private:
 			Ui::QuickDialog* ui;
-			QWidget* input_widget{};
+			QWidget* input_widget;
 			QString title;
 	};
 }

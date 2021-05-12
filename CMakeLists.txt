@@ -53,11 +53,15 @@ set(NOVA_PUBLIC_HEADERS
     include/nova.h
     include/workbench.h
     include/actionprovider.h
-    include/quickdialog.h)
+    include/quickdialog.h
+    include/searchbar.h)
 add_library(Nova SHARED
             src/workbench.cpp
             src/actionprovider.cpp
-            src/quickdialog.cpp)
+            src/quickdialog.cpp
+            src/searchbar.cpp
+            # moc needs adding the headers
+            ${NOVA_PUBLIC_HEADERS})
 
 set_target_properties(Nova PROPERTIES
                       OUTPUT_NAME novaf

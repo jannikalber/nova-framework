@@ -77,9 +77,13 @@ namespace nova {
 		}
 		
 		dialog.set_input_widget(&list_widget);
+		// Make the dialog as small as possible
+		list_widget.setMinimumWidth(150);
+		list_widget.setMaximumSize(list_widget.sizeHintForColumn(0) + 2 * list_widget.frameWidth(),
+		                         list_widget.sizeHintForRow(0) * list_widget.count() + 2 * list_widget.frameWidth());
 		list_widget.setCurrentRow(0);
 		
-		QObject::connect(&list_widget, &QListWidget::itemClicked, &dialog, &QDialog::accept);
+		QObject::connect(&list_widget, &QListWidget::itemClicked, &dialog, &QuickDialog::accept);
 		
 		// Select by hovering
 		list_widget.setMouseTracking(true);

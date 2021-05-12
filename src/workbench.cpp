@@ -12,12 +12,13 @@
 
 #include "ui_workbench.h"
 #include "actionprovider.h"
+#include "searchbar.h"
 
 namespace nova {
 	Workbench* workbench;
 	
 	Workbench::Workbench(QWidget* parent) : QMainWindow(parent), ui(new Ui::Workbench()),
-	                                        menu_file(nullptr), menu_edit(nullptr), menu_help(nullptr) {
+	                                        menu_file(nullptr), menu_edit(nullptr), menu_help(nullptr), providers(QList<ActionProvider*>()) {
 		workbench = this;
 		ui->setupUi(this);
 	}
@@ -52,14 +53,14 @@ namespace nova {
 		}
 	}
 	
-	QAction* Workbench::ConstructStandardAction(StandardAction standard_action) {
-		auto* action = new QAction(this);
+	QAction* Workbench::ConstructStandardAction(StandardAction standard_action, ActionProvider* provider) {
+		auto* action = new QAction(provider);
 		
 		switch (standard_action) {
 			case Exit:
 				action->setText(QApplication::translate("nova/action", "&Exit"));
 				action->setShortcut(QKeySequence("Ctrl+Q"));
-				connect(action, &QAction::triggered, this, &QMainWindow::close);
+				connect(action, &QAction::triggered, this, &Workbench::close);
 				
 				break;
 			
@@ -71,7 +72,13 @@ namespace nova {
 				break;
 			
 			case SearchBar:
-				// TODO: Implement search bar
+				action->setText(QApplication::translate("nova/action", "&Search..."));
+				action->setShortcut(QKeySequence("F3"));
+				connect(action, &QAction::triggered, [this]() {
+					class SearchBar bar(this);
+					bar.exec();
+				});
+				
 				break;
 			
 			default:

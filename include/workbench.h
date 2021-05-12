@@ -7,6 +7,7 @@
 #define NOVA_FRAMEWORK_WORKBENCH_H
 
 #include <QtCore/QtGlobal>
+#include <QtCore/QList>
 #include <QtWidgets/QMainWindow>
 
 #include "nova.h"
@@ -20,7 +21,9 @@ namespace Ui { class Workbench; }
 QT_END_NAMESPACE
 
 namespace nova {
+	class ActionProvider;
 	class MenuActionProvider;
+	class SearchBar;
 	
 	/**
 	 * @brief This class represents the main window of the application.
@@ -96,6 +99,7 @@ namespace nova {
 			 *
 			 * This function overloads ConstructMenu()
 			 *
+			 * @param standard_menu specifies which menu should be created.
 			 * @return A pointer to the created menu or nullptr if standard_menu is invalid
 			 *
 			 * @sa ConstructMenu()
@@ -106,11 +110,13 @@ namespace nova {
 			/**
 			 * @brief Constructs one of the standard actions and handles its functionality.
 			 *
+			 * @param standard_action specifies which action should be created.
+			 * @param provider is the ActionProvider the action gets associated with.
 			 * @return A pointer to the created action or nullptr if standard_action is invalid
 			 *
 			 * @sa StandardAction to see a list of available actions
 			 */
-			QAction* ConstructStandardAction(StandardAction standard_action);
+			QAction* ConstructStandardAction(StandardAction standard_action, ActionProvider* provider);
 			
 			/**
 			 * Returns the given standard menu which was created using ConstructMenu(StandardMenu).
@@ -120,11 +126,16 @@ namespace nova {
 			MenuActionProvider* get_standard_menu(StandardMenu standard_menu) const;
 		
 		private:
+			friend class ActionProvider;
+			friend class SearchBar;
+			
 			Ui::Workbench* ui;
 			
 			MenuActionProvider* menu_file;
 			MenuActionProvider* menu_edit;
 			MenuActionProvider* menu_help;
+			
+			QList<ActionProvider*> providers;
 	};
 }
 

@@ -5,15 +5,31 @@
 
 #include "actionprovider.h"
 
+#include <QtWidgets/QAction>
 #include <QtWidgets/QWidget>
 
+#include "workbench.h"
+
 namespace nova {
-	MenuActionProvider::MenuActionProvider(const QString& title, QWidget* parent)
-			: ActionProvider(QString(title).replace('&', " ")), QMenu(parent) {
+	ActionProvider::ActionProvider(const QString& title, Workbench* window)
+			: QObject(window), title(title), window(window) {
+		window->providers << this;
+	}
+	
+	QAction* ActionProvider::ConstructAction(const QString& text) {
+		auto* action = new QAction(this);
+		action->setText(text);
+		return action;
+	}
+	
+	MenuActionProvider::MenuActionProvider(const QString& title, Workbench* window)
+			: ActionProvider(QString(title).replace('&', " "), window), QMenu(window) {
 		setTitle(title);
 	}
 	
 	void MenuActionProvider::ShowAction(QAction* action, bool separate, bool is_important) {
+		if (action->parent() != static_cast<ActionProvider*>(this)) return;
+		
 		if (separate) addSeparator();
 		addAction(action);
 		

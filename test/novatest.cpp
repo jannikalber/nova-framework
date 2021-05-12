@@ -21,21 +21,30 @@
 class Workbench : public nova::Workbench {
 	public:
 		inline Workbench() : nova::Workbench() {
-			ConstructMenu(Workbench::File)->ShowAction(ConstructStandardAction(Workbench::Exit));
+			nova::MenuActionProvider* menu_file = ConstructMenu(Workbench::File);
+			
+			QAction* action = get_standard_menu(Workbench::File)->ConstructAction("&Checkable Action");
+			action->setCheckable(true);
+			action->setWhatsThis("What's This?");
+			menu_file->ShowAction(action);
+			
+			menu_file->ShowAction(ConstructStandardAction(Workbench::Exit, menu_file), true);
+			
 			nova::MenuActionProvider* menu_edit = ConstructMenu(Workbench::Edit);
 			ConstructMenu(Workbench::Help);
 			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Help);
 			
 			// QuickDialog demo 1
 			QAction* edit_action = menu_edit->ConstructAction("&Edit Demo");
+			edit_action->setIcon(QApplication::style()->standardIcon(QStyle::SP_DriveCDIcon));
 			connect(edit_action, &QAction::triggered, [this]() {
 				QMessageBox::information(this, "", nova::QuickDialog::InputText(this, "Show Message", "Message",
 				                                                                QLineEdit::Normal, "My message"));
 			});
 			menu_edit->ShowAction(edit_action);
 			
-			menu_help->ShowAction(ConstructStandardAction(Workbench::SearchBar));
-			menu_help->ShowAction(ConstructStandardAction(Workbench::DirectHelp), true);
+			menu_help->ShowAction(ConstructStandardAction(Workbench::SearchBar, menu_help));
+			menu_help->ShowAction(ConstructStandardAction(Workbench::DirectHelp, menu_help), true);
 			
 			// QuickDialog demo 2
 			QAction* help_action = menu_help->ConstructAction("&Help Demo");

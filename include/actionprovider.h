@@ -6,30 +6,32 @@
 #ifndef NOVA_FRAMEWORK_ACTIONPROVIDER_H
 #define NOVA_FRAMEWORK_ACTIONPROVIDER_H
 
+#include <QtCore/Qt>
 #include <QtCore/QtGlobal>
 #include <QtCore/QObject>
 #include <QtCore/QString>
+#include <QtCore/QList>
 #include <QtWidgets/QMenu>
-#include <QtWidgets/QAction>
 
 #include "nova.h"
 
 QT_USE_NAMESPACE
 QT_BEGIN_NAMESPACE
-class QWidget;
+class QAction;
 QT_END_NAMESPACE
 
 namespace nova {
 	class Workbench;
+	class SearchBar;
 	
 	/**
 	 * @brief A class which extends ActionProvider can contain actions.
 	 * @headerfile actionprovider.h <nova/actionprovider.h>
 	 *
-	 * These actions can be found using the search bar. An ActionProvider is a separated context
+	 * These actions can be found using the SearchBar. An ActionProvider is a separated context
 	 * (e.g. a tool window or a menu). Therefore, its actions are categorized in that context.
 	 */
-	class NOVA_API ActionProvider : private QObject {
+	class NOVA_API ActionProvider : public QObject {
 		public:
 			/**
 			 * Initializes the ActionProvider.
@@ -37,8 +39,7 @@ namespace nova {
 			 * @param title The title of the category the provider's actions belong to
 			 * @param window The provider's Workbench (optional, default: nova::workbench)
 			 */
-			inline explicit ActionProvider(const QString& title, Workbench* window = workbench) : title(title),
-			                                                                                      window(window) {}
+			explicit ActionProvider(const QString& title, Workbench* window = workbench);
 			
 			/**
 			 * @brief Constructs an action which is bound to this provider.
@@ -46,14 +47,13 @@ namespace nova {
 			 * @param text The action's title (it might contain the hotkey character "&")
 			 * @return A pointer to the constructed action
 			 */
-			inline QAction* ConstructAction(const QString& text) {
-				auto* action = new QAction(this);
-				action->setText(text);
-				return action;
-			}
+			QAction* ConstructAction(const QString& text);
 			
 			/**
 			 * @brief Shows an action in the implementation specific way.
+			 *
+			 * Warning: If the action is not associated with this action provider (i.e. it wasn't constructed with
+			 * ConstructAction()), it won't/shouldn't be shown.
 			 *
 			 * @param action The action to be displayed (consider to construct it with ConstructAction())
 			 * @param separate If a separator should be inserted before inserting the action (optional, default: false)
@@ -63,6 +63,18 @@ namespace nova {
 			 * @sa MenuActionProvider::ShowAction()
 			 */
 			virtual void ShowAction(QAction* action, bool separate = false, bool is_important = false) = 0;
+			
+			/**
+			 * @brief Returns the provider'S title.
+			 */
+			inline QString get_title() { return title; }
+			
+			/**
+			 * @brief Returns a list containing all actions which belong to this provider.
+			 */
+			inline QList<QAction*> ListActions() {
+				return findChildren<QAction*>(QString(), Qt::FindDirectChildrenOnly);
+			}
 		
 		private:
 			const QString title;
@@ -73,7 +85,7 @@ namespace nova {
 	 * @brief Implements an ActionProvider
 	 * @headerfile actionprovider.h <nova/actionprovider.h>
 	 *
-	 * Its actions are bound to a menu.
+	 * Its actions are bound to a global menu. This is in nearly every case a menu of the menu bar.
 	 *
 	 * @sa Workbench::ConstructMenu()
 	 */
@@ -82,10 +94,12 @@ namespace nova {
 			/**
 			 * Constructs a new MenuActionProvider
 			 *
+			 * Hint: the menu isn't shown in the menu bar, for that use Workbench::ConstructMenu().
+			 *
 			 * @param title The menu's title (it might contain the hotkey character "&")
-			 * @param parent The menu's parent widget
+			 * @param window The menu's parent workbench and widget
 			 */
-			MenuActionProvider(const QString& title, QWidget* parent);
+			MenuActionProvider(const QString& title, Workbench* window);
 			
 			void ShowAction(QAction* action, bool separate = false, bool is_important = false) override;
 		
