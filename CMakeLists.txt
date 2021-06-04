@@ -12,7 +12,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Qt
 find_package(Qt5 REQUIRED
-             COMPONENTS Core Gui Widgets)
+             COMPONENTS Core Gui Widgets WinExtras)
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
@@ -54,21 +54,23 @@ set(NOVA_PUBLIC_HEADERS
     include/workbench.h
     include/actionprovider.h
     include/quickdialog.h
-    include/searchbar.h)
+    include/searchbar.h include/progress.h)
 add_library(Nova SHARED
+            # moc needs adding the headers
+            ${NOVA_PUBLIC_HEADERS}
+
             src/workbench.cpp
             src/actionprovider.cpp
             src/quickdialog.cpp
             src/searchbar.cpp
-            # moc needs adding the headers
-            ${NOVA_PUBLIC_HEADERS})
+            src/progress.cpp)
 
 set_target_properties(Nova PROPERTIES
                       OUTPUT_NAME novaf
                       PUBLIC_HEADER "${NOVA_PUBLIC_HEADERS}")
 target_include_directories(Nova PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
                            $<INSTALL_INTERFACE:include/>)
-target_link_libraries(Nova PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
+target_link_libraries(Nova PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets Qt5::WinExtras)
 
 # Installation rules
 install(TARGETS Nova

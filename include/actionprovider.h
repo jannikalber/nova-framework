@@ -65,7 +65,7 @@ namespace nova {
 			virtual void ShowAction(QAction* action, bool separate = false, bool is_important = false) = 0;
 			
 			/**
-			 * @brief Returns the provider'S title.
+			 * @brief Returns the provider's title.
 			 */
 			inline QString get_title() { return title; }
 			

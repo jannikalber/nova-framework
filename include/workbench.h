@@ -11,11 +11,17 @@
 #include <QtWidgets/QMainWindow>
 
 #include "nova.h"
+#include "progress.h"
 
 QT_USE_NAMESPACE
 QT_BEGIN_NAMESPACE
 class QWidget;
+class QShowEvent;
 class QAction;
+class QLabel;
+class QProgressBar;
+class QWinTaskbarButton;
+class QWinTaskbarProgress;
 
 namespace Ui { class Workbench; }
 QT_END_NAMESPACE
@@ -35,9 +41,11 @@ namespace nova {
 	 *
 	 * Only one workbench window should be constructed in one application.
 	 *
+	 * All strings are translated, their contexts can be found in this documentation and usually begin with "nova/"
+	 *
 	 * @sa nova::workbench
 	 */
-	class NOVA_API Workbench : public QMainWindow {
+	class NOVA_API Workbench : public QMainWindow, public ProgressMonitor {
 		public:
 			/**
 			 * @brief A list of menus needed in nearly every application:
@@ -73,7 +81,9 @@ namespace nova {
 			 * Constructs a new workbench. The constructor should only be called once in one application.
 			 * Calling this constructor updates automatically the reference of nova::workbench.
 			 *
-			 * @param parent: The parent window which blocks its input until the workbench window is closed (optional, default: none)
+			 * A ProgressMonitor is inserted in the workbench's status bar.
+			 *
+			 * @param parent The parent window which blocks its input until the workbench window is closed (optional, default: none)
 			 * @sa nova::workbench
 			 */
 			explicit Workbench(QWidget* parent = nullptr);
@@ -119,11 +129,38 @@ namespace nova {
 			QAction* ConstructStandardAction(StandardAction standard_action, ActionProvider* provider);
 			
 			/**
-			 * Returns the given standard menu which was created using ConstructMenu(StandardMenu).
+			 * @brief Returns the given standard menu which was created using ConstructMenu(StandardMenu).
 			 *
 			 * @return The menu or nullptr if the menu is never constructed
 			 */
 			MenuActionProvider* get_standard_menu(StandardMenu standard_menu) const;
+			
+			/**
+			 * @brief Returns a pointer to the window's taskbar button.
+			 */
+			inline QWinTaskbarButton* get_taskbar_button() const { return taskbar_button; }
+			
+			/**
+			 * @brief Inserts a widget into the program's status bar.
+			 *
+			 * The widget is always inserted in front of the progress indicator.
+			 *
+			 * @param widget The widget to be inserted
+			 * @param stretch The stretch factor (optional, default: 1)
+			 *
+			 * @sa QStatusBar::addPermanentWidget()
+			 */
+			void AddStatusBarWidget(QWidget* widget, int stretch = 1);
+		
+		protected:
+			/**
+			 * @brief Reimplements QWidget::showEvent()
+			 *
+			 * Please do always call this implementation when overriding.
+			 */
+			void showEvent(QShowEvent* event) override;
+			void UpdateView(bool is_active, const QString& label_text, int max, int val) override;
+		
 		
 		private:
 			friend class ActionProvider;
@@ -136,6 +173,8 @@ namespace nova {
 			MenuActionProvider* menu_help;
 			
 			QList<ActionProvider*> providers;
+			
+			QWinTaskbarButton* taskbar_button;
 	};
 }
 

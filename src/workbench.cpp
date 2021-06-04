@@ -6,9 +6,15 @@
 #include "workbench.h"
 
 #include <QtGui/QKeySequence>
+#include <QtGui/QShowEvent>
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QAction>
 #include <QtWidgets/QWhatsThis>
+#include <QtWidgets/QStatusBar>
+#include <QtWidgets/QProgressBar>
+#include <QtWidgets/QLabel>
+#include <QtWinExtras/QWinTaskbarButton>
+#include <QtWinExtras/QWinTaskbarProgress>
 
 #include "ui_workbench.h"
 #include "actionprovider.h"
@@ -17,10 +23,14 @@
 namespace nova {
 	Workbench* workbench;
 	
-	Workbench::Workbench(QWidget* parent) : QMainWindow(parent), ui(new Ui::Workbench()),
-	                                        menu_file(nullptr), menu_edit(nullptr), menu_help(nullptr), providers(QList<ActionProvider*>()) {
+	Workbench::Workbench(QWidget* parent)
+			: QMainWindow(parent), ProgressMonitor(), ui(new Ui::Workbench()), menu_file(nullptr),
+			  menu_edit(nullptr), menu_help(nullptr), providers(QList<ActionProvider*>()),
+			  taskbar_button(new QWinTaskbarButton(this)) {
 		workbench = this;
 		ui->setupUi(this);
+		
+		ui->statusBar->addPermanentWidget(ui->wdgProgress, 1);
 	}
 	
 	Workbench::~Workbench() noexcept {
@@ -101,6 +111,37 @@ namespace nova {
 			
 			default:
 				return nullptr;
+		}
+	}
+	
+	void Workbench::AddStatusBarWidget(QWidget* widget, int stretch) {
+		// Guarantee the widget to be inserted in front of the progress indicator
+		static int index = 0;
+		ui->statusBar->insertPermanentWidget(index++, widget, stretch);
+	}
+	
+	void Workbench::showEvent(QShowEvent* event) {
+		if (event->spontaneous()) return;
+		taskbar_button->setWindow(windowHandle());
+		
+		event->accept();
+	}
+	
+	void Workbench::UpdateView(bool is_active, const QString& label_text, int max, int val) {
+		if (!is_active) {
+			ui->lblProgressDescription->setText(QApplication::translate("nova/progress", "Ready"));
+			ui->prbProgress->setVisible(false);
+			
+			taskbar_button->progress()->setVisible(false);
+		} else {
+			ui->lblProgressDescription->setText(label_text);
+			ui->prbProgress->setVisible(true);
+			ui->prbProgress->setMaximum(max);
+			ui->prbProgress->setValue(val);
+			
+			taskbar_button->progress()->setVisible(true);
+			taskbar_button->progress()->setMaximum(max);
+			taskbar_button->progress()->setValue(val);
 		}
 	}
 }

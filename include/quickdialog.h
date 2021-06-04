@@ -41,13 +41,13 @@ namespace nova {
 			/**
 			 * @brief Constructs a new QuickDialog.
 			 *
-			 * Set the input widget by calling set_input_widget() and call exec() to run the dialog.
+			 * Set the input widget by calling set_input_widget() and run the dialog by calling exec().
 			 *
 			 * @param parent The parent window
 			 * @param title is shown in the title bar. This is usually a hint for what should be queried
 			 * and not the application's name (e.g. "New File").
 			 */
-			QuickDialog(QWidget* parent, const QString& title = "");
+			explicit QuickDialog(QWidget* parent, const QString& title = "");
 			virtual ~QuickDialog() noexcept;
 			
 			/**

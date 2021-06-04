@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 
+#include <QtCore/QThread>
 #include <QtCore/QString>
 #include <QtCore/QList>
 #include <QtGui/QIcon>
@@ -10,17 +11,24 @@
 #include <QtWidgets/QApplication>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QAction>
+#include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QTextEdit>
 #include <QtWidgets/QMessageBox>
 
 #include <workbench.h>
+#include <progress.h>
 #include <actionprovider.h>
 #include <quickdialog.h>
 
 class Workbench : public nova::Workbench {
 	public:
 		inline Workbench() : nova::Workbench() {
+			// Status bar
+			AddStatusBarWidget(new QLabel("Label 1", this));
+			AddStatusBarWidget(new QLabel("Label 2", this));
+			
+			// Menu demo
 			nova::MenuActionProvider* menu_file = ConstructMenu(Workbench::File);
 			
 			QAction* action = get_standard_menu(Workbench::File)->ConstructAction("&Checkable Action");
@@ -65,6 +73,24 @@ class Workbench : public nova::Workbench {
 				dialog.exec();
 			});
 			menu_help->ShowAction(help_action);
+			
+			// ProgressMonitor demo
+			auto* task1 = new nova::Task(this, "Testing 1...", true,
+			                             [](nova::Task* task) -> nova::StatusCode {
+				                             QThread::sleep(5);
+				                             return nova::StatusCode(true, nullptr);
+			                             });
+			auto* task2 = new nova::Task(this, "Testing 2...", false,
+			                             [](nova::Task* task) -> nova::StatusCode {
+				                             for (int i = 1; i <= 100; ++i) {
+					                             task->set_value(i);
+					                             QThread::msleep(100);
+				                             }
+				                             return nova::StatusCode(true, nullptr);
+			                             });
+			
+			task1->start();
+			task2->start();
 		}
 };
 

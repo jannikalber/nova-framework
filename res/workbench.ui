@@ -29,6 +29,33 @@
 		</widget>
 		
 		<widget class="QMenuBar" />
-		<widget class="QStatusBar" />
+		
+		<widget class="QStatusBar">
+			<widget class="QLabel" name="lblConnectionState" />
+			
+			<widget class="QWidget" name="wdgProgress">
+				<layout class="QHBoxLayout">
+					<item>
+						<widget class="QLabel" name="lblProgressDescription" />
+					</item>
+					
+					<item>
+						<widget class="QProgressBar" name="prbProgress">
+							<property name="minimumHeight">
+								<number>15</number>
+							</property>
+							
+							<property name="visible">
+								<bool>false</bool>
+							</property>
+							
+							<property name="alignment">
+								<enum>Qt::AlignCenter</enum>
+							</property>
+						</widget>
+					</item>
+				</layout>
+			</widget>
+		</widget>
 	</widget>
 </ui>
