@@ -31,6 +31,10 @@
 		<widget class="QMenuBar" />
 		
 		<widget class="QStatusBar">
+			<property name="maximumHeight">
+				<number>21</number>
+			</property>
+			
 			<widget class="QLabel" name="lblConnectionState" />
 			
 			<widget class="QWidget" name="wdgProgress">
@@ -41,7 +45,7 @@
 					
 					<item>
 						<widget class="QProgressBar" name="prbProgress">
-							<property name="minimumHeight">
+							<property name="maximumHeight">
 								<number>15</number>
 							</property>
 							
@@ -51,6 +55,42 @@
 							
 							<property name="alignment">
 								<enum>Qt::AlignCenter</enum>
+							</property>
+						</widget>
+					</item>
+				</layout>
+			</widget>
+			
+			<widget class="QWidget" name="wdgNotificationBar">
+				<property name="visible">
+					<bool>false</bool>
+				</property>
+				
+				<layout class="QHBoxLayout">
+					<item>
+						<widget class="QLabel" name="lblNotificationIcon">
+							<property name="sizePolicy">
+								<sizepolicy hsizetype="Maximum" vsizetype="Preferred" />
+							</property>
+						</widget>
+					</item>
+					
+					<item>
+						<widget class="QLabel" name="lblNotification">
+							<property name="sizePolicy">
+								<sizepolicy hsizetype="Maximum" vsizetype="Preferred" />
+							</property>
+							
+							<property name="textInteractionFlags">
+								<enum>Qt::TextSelectableByMouse</enum>
+							</property>
+						</widget>
+					</item>
+					
+					<item>
+						<widget class="QLabel" name="lblNotificationLinks">
+							<property name="text">
+								<string>[&lt;a href="close"&gt;Close&lt;/a&gt; | &lt;a href="close"&gt;Fix&lt;/a&gt;]</string>
 							</property>
 						</widget>
 					</item>

@@ -32,6 +32,9 @@
 
 /**
  * @brief Nova library namespace
+ *
+ * All strings are translated, their contexts can be found in this documentation and usually begin with "nova/".
+ * The translations may contain place markers (%1, %2, %3, ...) which are also used by QString::arg().
  */
 namespace nova {
 	class Workbench;

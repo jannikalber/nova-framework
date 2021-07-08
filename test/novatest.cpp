@@ -14,10 +14,10 @@
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
 #include <QtWidgets/QTextEdit>
-#include <QtWidgets/QMessageBox>
 
 #include <workbench.h>
 #include <progress.h>
+#include <notification.h>
 #include <actionprovider.h>
 #include <quickdialog.h>
 
@@ -25,31 +25,47 @@ class Workbench : public nova::Workbench {
 	public:
 		inline Workbench() : nova::Workbench() {
 			// Status bar
-			AddStatusBarWidget(new QLabel("Label 1", this));
+			AddStatusBarWidget(new QLabel("Label 1", this), 2);
 			AddStatusBarWidget(new QLabel("Label 2", this));
+			
+			ConstructSystemTrayIcon();
 			
 			// Menu demo
 			nova::MenuActionProvider* menu_file = ConstructMenu(Workbench::File);
 			
-			QAction* action = get_standard_menu(Workbench::File)->ConstructAction("&Checkable Action");
-			action->setCheckable(true);
-			action->setWhatsThis("What's This?");
-			menu_file->ShowAction(action);
+			QAction* check_action = get_standard_menu(Workbench::File)->ConstructAction("&Checkable Action");
+			check_action->setCheckable(true);
+			check_action->setWhatsThis("What's This?");
+			menu_file->ShowAction(check_action);
 			
-			menu_file->ShowAction(ConstructStandardAction(Workbench::Exit, menu_file), true);
+			QAction* action_exit = ConstructStandardAction(Workbench::Exit, menu_file);
+			menu_file->ShowAction(action_exit, true);
+			
+			get_system_tray_menu()->ShowAction(get_system_tray_menu()->ConstructAction("&Test"));
+			get_system_tray_menu()->ShowAction(action_exit, true);
 			
 			nova::MenuActionProvider* menu_edit = ConstructMenu(Workbench::Edit);
 			ConstructMenu(Workbench::Help);
 			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Help);
 			
-			// QuickDialog demo 1
+			// QuickDialog / Notification demo 1
 			QAction* edit_action = menu_edit->ConstructAction("&Edit Demo");
 			edit_action->setIcon(QApplication::style()->standardIcon(QStyle::SP_DriveCDIcon));
 			connect(edit_action, &QAction::triggered, [this]() {
-				QMessageBox::information(this, "", nova::QuickDialog::InputText(this, "Show Message", "Message",
-				                                                                QLineEdit::Normal, "My message"));
+				nova::ActionList action_list;
+				action_list["Quit"] = [this](nova::Notification* notification) { close(); };
+				
+				const QString& message = nova::QuickDialog::InputText(this, "Enable Message",
+				                                                      "Message",
+				                                                      QLineEdit::Normal,
+				                                                      "My message");
+				
+				auto* notification = new nova::Notification(this, "Notification", message,
+				                                            nova::Notification::Information, false, action_list);
+				notification->Show();
 			});
 			menu_edit->ShowAction(edit_action);
+			menu_edit->ShowAction(check_action, true);
 			
 			menu_help->ShowAction(ConstructStandardAction(Workbench::SearchBar, menu_help));
 			menu_help->ShowAction(ConstructStandardAction(Workbench::DirectHelp, menu_help), true);
@@ -63,7 +79,7 @@ class Workbench : public nova::Workbench {
 				const QString& text = nova::QuickDialog::InputItem(this, "Help Topics",
 				                                                   QStringList({"Page 1", "Page 2"}), icons);
 				
-				// Show the page's title in another QuickDialog
+				// Enable the page's title in another QuickDialog
 				nova::QuickDialog dialog(this, "Edit Help Topic");
 				
 				QTextEdit text_edit(&dialog);
@@ -75,18 +91,18 @@ class Workbench : public nova::Workbench {
 			menu_help->ShowAction(help_action);
 			
 			// ProgressMonitor demo
-			auto* task1 = new nova::Task(this, "Testing 1...", true,
+			auto* task1 = new nova::Task(this, "Testing 1", true,
 			                             [](nova::Task* task) -> nova::StatusCode {
 				                             QThread::sleep(5);
 				                             return nova::StatusCode(true, nullptr);
 			                             });
-			auto* task2 = new nova::Task(this, "Testing 2...", false,
+			auto* task2 = new nova::Task(this, "Testing 2", false,
 			                             [](nova::Task* task) -> nova::StatusCode {
 				                             for (int i = 1; i <= 100; ++i) {
 					                             task->set_value(i);
 					                             QThread::msleep(100);
 				                             }
-				                             return nova::StatusCode(true, nullptr);
+				                             return nova::StatusCode(false, "Testing failed");
 			                             });
 			
 			task1->start();
@@ -96,6 +112,7 @@ class Workbench : public nova::Workbench {
 
 int main(int argc, char** argv) {
 	new QApplication(argc, argv);
+	QApplication::setWindowIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
 	
 	Workbench workbench;
 	workbench.show();

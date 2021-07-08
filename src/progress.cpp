@@ -5,17 +5,24 @@
 
 #include "progress.h"
 
+#include <QtCore/QMetaObject>
 #include <QtWidgets/QApplication>
+
+#include "notification.h"
 
 namespace nova {
 	Task::Task(ProgressMonitor* monitor, const QString& task_name, bool is_indeterminate,
-	           const std::function<StatusCode(Task*)>& lambda)
-			: QThread(), task_name(task_name), indeterminate(is_indeterminate), lambda(lambda), value(0) {
+	           const std::function<StatusCode(Task*)>& lambda, bool needs_event_queue)
+			: QThread(), task_name(task_name), indeterminate(is_indeterminate), lambda(lambda),
+			  needs_event_queue(needs_event_queue), value(0) {
 		connect(this, &Task::finished, this, &Task::deleteLater);
 		// Run the following lambdas on the main thread
 		connect(this, &Task::started, qApp, [this, monitor] { monitor->Enable(this); });
 		connect(this, &Task::disabled, qApp, [this, monitor]() { monitor->Disable(this); });
 		connect(this, &Task::updated, qApp, [monitor]() { monitor->UpdateTasks(); });
+		connect(this, &Task::errorOccurred, qApp, [this, monitor](const QString& message) {
+			monitor->ReportError(get_task_name(), message);
+		});
 	}
 	
 	void Task::set_value(int value) {
@@ -27,17 +34,25 @@ namespace nova {
 		return lambda(this);
 	}
 	
+	void Task::RunOnMainThread(const std::function<void()>& lambda) {
+		QMetaObject::invokeMethod(qApp, lambda);
+	}
+	
 	void Task::run() {
 		const StatusCode status_code = Run();
-		// if (!status_code.first) TODO: Errors must be implemented
+		if (!status_code.first) emit errorOccurred(status_code.second);
 		
 		emit disabled();
 		
 		// Event loop for further signals and slots operations
-		exec();
+		if (needs_event_queue) exec();
 	}
 	
-	ProgressMonitor::ProgressMonitor() : tasks(QList<Task*>()) {
+	ProgressMonitor::ProgressMonitor(Notifier* notifier) : tasks(QList<Task*>()), notifier(notifier) {
+	}
+	
+	Task* ProgressMonitor::get_current_task() const {
+		return tasks.isEmpty() ? nullptr : tasks.at(0);
 	}
 	
 	void ProgressMonitor::Enable(Task* task) {
@@ -50,11 +65,14 @@ namespace nova {
 		UpdateTasks();
 	}
 	
-	void ProgressMonitor::UpdateTasks() {
-		if (tasks.isEmpty()) UpdateView(false, nullptr, 0, 0);
-		else {
-			auto* task = tasks.at(0);
-			UpdateView(true, task->get_task_name(), task->is_indeterminate() ? 0 : 100, task->get_value());
+	void ProgressMonitor::ReportError(const QString& title, const QString& message) {
+		if (notifier != nullptr) {
+			auto* notification = new Notification(notifier, title, message, Notification::Error, true);
+			notification->Show();
 		}
+	}
+	void ProgressMonitor::UpdateTasks() {
+		if (tasks.isEmpty()) UpdateProgressView(false, nullptr);
+		else UpdateProgressView(true, tasks.at(0));
 	}
 }

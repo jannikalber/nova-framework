@@ -7,19 +7,21 @@
 #define NOVA_FRAMEWORK_WORKBENCH_H
 
 #include <QtCore/QtGlobal>
+#include <QtCore/QObject>
 #include <QtCore/QList>
 #include <QtWidgets/QMainWindow>
+#include <QtWidgets/QSystemTrayIcon>
 
 #include "nova.h"
 #include "progress.h"
+#include "notification.h"
 
 QT_USE_NAMESPACE
 QT_BEGIN_NAMESPACE
+class QString;
 class QWidget;
 class QShowEvent;
 class QAction;
-class QLabel;
-class QProgressBar;
 class QWinTaskbarButton;
 class QWinTaskbarProgress;
 
@@ -41,11 +43,11 @@ namespace nova {
 	 *
 	 * Only one workbench window should be constructed in one application.
 	 *
-	 * All strings are translated, their contexts can be found in this documentation and usually begin with "nova/"
-	 *
 	 * @sa nova::workbench
 	 */
-	class NOVA_API Workbench : public QMainWindow, public ProgressMonitor {
+	class NOVA_API Workbench : public QMainWindow, public ProgressMonitor, public Notifier {
+		Q_OBJECT
+		
 		public:
 			/**
 			 * @brief A list of menus needed in nearly every application:
@@ -129,9 +131,36 @@ namespace nova {
 			QAction* ConstructStandardAction(StandardAction standard_action, ActionProvider* provider);
 			
 			/**
+			 * @brief Inserts a widget into the program's status bar.
+			 *
+			 * The widget is always inserted in front of the progress monitor.
+			 *
+			 * @param widget The widget to be inserted
+			 * @param stretch The stretch factor (optional, default: 1)
+			 *
+			 * @sa QStatusBar::addPermanentWidget()
+			 */
+			void AddStatusBarWidget(QWidget* widget, int stretch = 1);
+			
+			/**
+			 * @brief Creates and shows an icon in the system's tray menu.
+			 *
+			 * The tray icon has a context menu which is a normal action provider with the title "Tray Icon"
+			 * (translation context: "nova/menu").
+			 *
+			 * Clicking the icon will restore the window.
+			 *
+			 * Further notifications are shown by the tray icon.
+			 *
+			 * @return A pointer to the created tray icon
+			 */
+			QSystemTrayIcon* ConstructSystemTrayIcon();
+			
+			/**
 			 * @brief Returns the given standard menu which was created using ConstructMenu(StandardMenu).
 			 *
 			 * @return The menu or nullptr if the menu is never constructed
+			 * @sa ConstructMenu()
 			 */
 			MenuActionProvider* get_standard_menu(StandardMenu standard_menu) const;
 			
@@ -141,16 +170,23 @@ namespace nova {
 			inline QWinTaskbarButton* get_taskbar_button() const { return taskbar_button; }
 			
 			/**
-			 * @brief Inserts a widget into the program's status bar.
+			 * @brief Returns a pointer to the workbench's icon in the system's tray menu.
 			 *
-			 * The widget is always inserted in front of the progress indicator.
+			 * @return The icon or nullptr if the icon is never constructed
 			 *
-			 * @param widget The widget to be inserted
-			 * @param stretch The stretch factor (optional, default: 1)
-			 *
-			 * @sa QStatusBar::addPermanentWidget()
+			 * @sa ConstructSystemTrayIcon()
 			 */
-			void AddStatusBarWidget(QWidget* widget, int stretch = 1);
+			inline QSystemTrayIcon* get_system_tray_icon() const { return tray_icon; }
+			
+			/**
+			 * @brief Returns a pointer to the tray icon's context menu.
+			 *
+			 * @return The menu or nullptr if the icon is never constructed
+			 *
+			 * @sa ConstructSystemTrayIcon()
+			 * @sa get_system_tray_menu()
+			 */
+			inline MenuActionProvider* get_system_tray_menu() const { return menu_tray; }
 		
 		protected:
 			/**
@@ -159,8 +195,23 @@ namespace nova {
 			 * Please do always call this implementation when overriding.
 			 */
 			void showEvent(QShowEvent* event) override;
-			void UpdateView(bool is_active, const QString& label_text, int max, int val) override;
-		
+			
+			/**
+			 * @brief Reimplements ProgressMonitor::UpdateProgressView()
+			 */
+			void UpdateProgressView(bool is_active, Task* task) override;
+			
+			/**
+			 * @brief Reimplements Notifier::UpdateNotificationView()
+			 */
+			void UpdateNotificationView(bool is_active, Notification* notification) override;
+			
+			/**
+			 * @brief Reimplements Notifier::ShowNotificationPopup()
+			 *
+			 * A popup is only shown if the workbench has a tray icon.
+			 */
+			void ShowNotificationPopup(Notification* notification) override;
 		
 		private:
 			friend class ActionProvider;
@@ -172,9 +223,16 @@ namespace nova {
 			MenuActionProvider* menu_edit;
 			MenuActionProvider* menu_help;
 			
+			MenuActionProvider* menu_tray;
+			
 			QList<ActionProvider*> providers;
 			
 			QWinTaskbarButton* taskbar_button;
+			QSystemTrayIcon* tray_icon;
+		
+		private slots:
+			void sysTrayActivated(QSystemTrayIcon::ActivationReason reason = QSystemTrayIcon::Trigger);
+			void notificationLinkActivated(const QString& link);
 	};
 }
 

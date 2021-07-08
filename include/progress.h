@@ -18,7 +18,9 @@
 #include "nova.h"
 
 namespace nova {
+	class Notifier;
 	class ProgressMonitor;
+	
 	/**
 	 * @brief Describes if a Task succeeded or not.
 	 *
@@ -26,7 +28,9 @@ namespace nova {
 	 *
 	 * Possible values:
 	 * - (true, nullptr): the task succeeded
-	 * - (false, error message): the task failed, the error message is shown in the workbench
+	 * - (false, error message): the task failed, the errorOccurred message is shown in the workbench
+	 *
+	 * @sa Task
 	 */
 	typedef QPair<bool, QString> StatusCode;
 	
@@ -39,8 +43,10 @@ namespace nova {
 	 * The first phase is the task itself which is represented in ProgressMonitor objects (i.e. which can have a
 	 * percentage value).
 	 *
-	 * The task isn't destroyed, when the first phase ends: It's still possible to receive some events. The task
-	 * won't be shown in monitors anymore. This phase can be terminated by calling quit().
+	 * The task isn't destroyed, when the first phase ends: It's still possible to receive some events. This phase
+	 * isn't shown in monitors anymore and can be terminated by calling quit().
+	 *
+	 * @sa ProgressMonitor
 	 */
 	class NOVA_API Task : public QThread {
 		Q_OBJECT
@@ -51,14 +57,18 @@ namespace nova {
 			 *
 			 * The task isn't started. Call start().
 			 *
+			 * Note: The task gets automatically deleted, when it finished.
+			 *
 			 * @param monitor The monitor in which the task is shown
 			 * @param task_name is a short description being represented in the monitor
 			 * @param is_indeterminate If this property is true, the task has no percentage value (optional, default: true).
 			 * @param lambda This can be a lambda which is executed in the first phase. It's parameter is the task
 			 * itself for changing the percentage value. It must return a StatusCode (optional: please override Run() instead).
+			 * @param needs_event_queue If this flag is set, the task does start an event queue for signals and slots to work.
+			 * Please make sure to use quit() to terminate the queue.
 			 */
 			Task(ProgressMonitor* monitor, const QString& task_name, bool is_indeterminate = true,
-			     const std::function<StatusCode(Task*)>& lambda = nullptr);
+			     const std::function<StatusCode(Task*)>& lambda = nullptr, bool needs_event_queue = false);
 			
 			/**
 			 * @brief Returns the task's name.
@@ -101,6 +111,16 @@ namespace nova {
 			virtual StatusCode Run();
 			
 			/**
+			 * @brief Runs a lambda on the QApplication's thread.
+			 *
+			 * Every Task lives in an own thread. Some tasks like updating the user interface require to be
+			 * executed in the main thread. The updates can be packed in a lambda and finally be run by this method.
+			 *
+			 * @param lambda The lambda to be run
+			 */
+			void RunOnMainThread(const std::function<void()>& lambda);
+			
+			/**
 			 * @brief Reimplements QThread::run()
 			 */
 			void run() override;
@@ -110,10 +130,13 @@ namespace nova {
 			const std::function<StatusCode(Task*)> lambda;
 			const bool indeterminate;
 			
+			const bool needs_event_queue;
+			
 			int value;
 		
 		signals:
 			/// @cond
+			void errorOccurred(const QString&);
 			void disabled();
 			void updated();
 			/// @endcond
@@ -124,38 +147,46 @@ namespace nova {
 	 * @headerfile progress.h <nova/progress.h>
 	 *
 	 * It often contains a progress bar and a label with the task's name.
+	 *
+	 * The workbench's progress monitor shows the hint "Ready" in the status bar, if there's no active task
+	 * (context: "nova/progress").
+	 *
+	 * @sa Task
 	 */
 	class NOVA_API ProgressMonitor {
 		public:
 			/**
 			 * @brief Constructs a new progress monitor.
 			 *
-			 * The workbench's ProgressMonitor shows the hint "Ready" in the status bar, if there's no active task
-			 * (context: "nova/progress").
+			 * @param notifier If a task fails, the error message is sent to this notifier (optional, default: none).
 			 */
-			ProgressMonitor();
+			explicit ProgressMonitor(Notifier* notifier = nullptr);
+			
+			/**
+			 * @brief Returns a pointer to the active task or nullptr if there's none.
+			 */
+			Task* get_current_task() const;
 		
 		protected:
 			/**
-			 * @brief This method is called when the widget must be updated.
+			 * @brief This method is called when the view must be updated.
 			 *
-			 * @param is_active is false if there's no task to be displayed
-			 * @param label_text is the text which should be displayed in the monitor's label
-			 * @param max is set to 0 if the task is is indeterminate, else it's set to 100. It's enough to call
-			 * QProgressBar::setMaximum()
-			 * @param val is the percentage value
+			 * @param is_active is false if there's no task to be displayed (i.e. the view has to be cleared)
+			 * @param task The task to be displayed
 			 */
-			virtual void UpdateView(bool is_active, const QString& label_text, int max, int val) = 0;
+			virtual void UpdateProgressView(bool is_active, Task* task) = 0;
 		
 		private:
 			friend class Task;
 			
+			Notifier* notifier;
 			QList<Task*> tasks;
 			
 			void Enable(Task* task);
 			void Disable(Task* task);
+			void ReportError(const QString& title, const QString& message);
 			void UpdateTasks();
 	};
 }
 
-#endif  // NOVA_FRAMEWORK_PROGRESS_H
+#endif  // NOVA_FRAMEWORK_PR

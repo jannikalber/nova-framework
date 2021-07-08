@@ -12,7 +12,7 @@
 
 namespace nova {
 	ActionProvider::ActionProvider(const QString& title, Workbench* window)
-			: QObject(window), title(title), window(window) {
+			: QObject(window), title(title) {
 		window->providers << this;
 	}
 	
@@ -28,8 +28,6 @@ namespace nova {
 	}
 	
 	void MenuActionProvider::ShowAction(QAction* action, bool separate, bool is_important) {
-		if (action->parent() != static_cast<ActionProvider*>(this)) return;
-		
 		if (separate) addSeparator();
 		addAction(action);
 		

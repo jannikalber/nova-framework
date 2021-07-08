@@ -50,10 +50,11 @@ namespace nova {
 			QAction* ConstructAction(const QString& text);
 			
 			/**
-			 * @brief Shows an action in the implementation specific way.
+			 * @brief Shows an action in the implementation-specific way.
 			 *
 			 * Warning: If the action is not associated with this action provider (i.e. it wasn't constructed with
-			 * ConstructAction()), it won't/shouldn't be shown.
+			 * ConstructAction()), it 's just shown, bt doesn't really belong to the provider. So, it can't be found
+			 * using the SearchBar.
 			 *
 			 * @param action The action to be displayed (consider to construct it with ConstructAction())
 			 * @param separate If a separator should be inserted before inserting the action (optional, default: false)
@@ -78,14 +79,13 @@ namespace nova {
 		
 		private:
 			const QString title;
-			Workbench* window;
 	};
 	
 	/**
 	 * @brief Implements an ActionProvider
 	 * @headerfile actionprovider.h <nova/actionprovider.h>
 	 *
-	 * Its actions are bound to a global menu. This is in nearly every case a menu of the menu bar.
+	 * Its actions are bound to a menu.
 	 *
 	 * @sa Workbench::ConstructMenu()
 	 */
@@ -94,13 +94,16 @@ namespace nova {
 			/**
 			 * Constructs a new MenuActionProvider
 			 *
-			 * Hint: the menu isn't shown in the menu bar, for that use Workbench::ConstructMenu().
+			 * Note: The menu isn't shown in the menu bar, for that use Workbench::ConstructMenu().
 			 *
 			 * @param title The menu's title (it might contain the hotkey character "&")
 			 * @param window The menu's parent workbench and widget
 			 */
 			MenuActionProvider(const QString& title, Workbench* window);
 			
+			/**
+			 * @brief Reimplements ActionProvider::ShowAction()
+			 */
 			void ShowAction(QAction* action, bool separate = false, bool is_important = false) override;
 		
 		private:
