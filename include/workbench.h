@@ -32,6 +32,7 @@ namespace nova {
 	class ActionProvider;
 	class MenuActionProvider;
 	class SearchBar;
+	class ToolWindow;
 	
 	/**
 	 * @brief This class represents the main window of the application.
@@ -43,6 +44,8 @@ namespace nova {
 	 *
 	 * Only one workbench window should be constructed in one application.
 	 *
+	 * This class should be derived.
+	 *
 	 * @sa nova::workbench
 	 */
 	class NOVA_API Workbench : public QMainWindow, public ProgressMonitor, public Notifier {
@@ -52,31 +55,34 @@ namespace nova {
 			/**
 			 * @brief A list of menus needed in nearly every application:
 			 *
-			 * - File (title: "&File")
-			 * - Edit (title: "&Edit")
-			 * - Help (title: "&Help")
+			 * - Menu_File (title: "&File")
+			 * - Menu_Edit (title: "&Edit")
+			 * - Menu_Window (title: "&Window")
+			 * - Menu_Help (title: "&Help")
 			 *
 			 * The translations belong to the context "nova/menu".
 			 *
 			 * @sa ConstructMenu(StandardMenu)
 			 */
 			enum StandardMenu {
-				File, Edit, Help
+				Menu_File, Menu_Edit, Menu_Window, Menu_Help
 			};
 			
 			/**
 			 * @brief A list of standard actions which are handled by Nova:
 			 *
-			 * - Exit [Ctrl+Q] (title: "&Exit")
-			 * - Direct Help, QWhatsThis [F2] (title: "&Direct Help")
-			 * - Search bar for browsing the application's actions
+			 * - Action_Exit to exit the application [Ctrl+Q] (title: "&Exit")
+			 * - Action_ResetLayout for resetting all tool bars and tool windows to their default position
+			 * (title: "Restore &Default Layout")
+			 * - Action_DirectHelp to enable QWhatsThis [F2] (title: "&Direct Help")
+			 * - Action_SearchBar for browsing the application's actions [F3] (title: "&Search...")
 			 *
 			 * The translations belong to the context "nova/action".
 			 *
 			 * @sa ConstructStandardAction()
 			 */
 			enum StandardAction {
-				Exit, DirectHelp, SearchBar
+				Action_Exit, Action_ResetLayout, Action_DirectHelp, Action_SearchBar
 			};
 			
 			/**
@@ -103,21 +109,26 @@ namespace nova {
 			 * The order of the menu entries is analog to the calls' order of this method.
 			 *
 			 * @param title The menu's title shown in the menu bar (it might contain the hotkey character "&")
+			 * @param needs_tool_bar if a tool bar should be created and shown too
+			 *
 			 * @return A pointer to the created menu
 			 */
-			MenuActionProvider* ConstructMenu(const QString& title);
+			MenuActionProvider* ConstructMenu(const QString& title, bool needs_tool_bar = false);
+			
 			/**
 			 * @brief Constructs one of the standard menus and displays it in the menu bar.
 			 *
 			 * This function overloads ConstructMenu()
 			 *
-			 * @param standard_menu specifies which menu should be created.
+			 * @param standard_menu specifies which menu should be created
+			 * @param needs_tool_bar if a tool bar should be created and shown too
+			 *
 			 * @return A pointer to the created menu or nullptr if standard_menu is invalid
 			 *
 			 * @sa ConstructMenu()
 			 * @sa get_standard_menu()
 			 */
-			MenuActionProvider* ConstructMenu(StandardMenu standard_menu);
+			MenuActionProvider* ConstructMenu(StandardMenu standard_menu, bool needs_tool_bar = false);
 			
 			/**
 			 * @brief Constructs one of the standard actions and handles its functionality.
@@ -187,8 +198,35 @@ namespace nova {
 			 * @sa get_system_tray_menu()
 			 */
 			inline MenuActionProvider* get_system_tray_menu() const { return menu_tray; }
+			
+			/**
+			 * @brief Returns a list of all action providers being associated with this workbench.
+			 *
+			 * They automatically get associated when their constructor is called.
+			 *
+			 * @sa ActionProvider
+			 */
+			inline QList<ActionProvider*> get_action_providers() const { return providers; }
+			
+			/**
+			 * @brief Returns a list of all tool windows being associated with this workbench.
+			 *
+			 * They automatically get associated when their constructor is called.
+			 *
+			 * @sa ToolWindow
+			 */
+			inline QList<ToolWindow*> get_tool_windows() const { return tool_windows; };
 		
 		protected:
+			/**
+			 * @brief Resets all tool windows and tool bars to their default position.
+			 *
+			 * This method can be overridden to add extra functionality.
+			 *
+			 * @sa ToolWindow::ResetLayout()
+			 */
+			virtual void ResetLayout();
+			
 			/**
 			 * @brief Reimplements QWidget::showEvent()
 			 *
@@ -216,16 +254,19 @@ namespace nova {
 		private:
 			friend class ActionProvider;
 			friend class SearchBar;
+			friend class ToolWindow;
 			
 			Ui::Workbench* ui;
 			
 			MenuActionProvider* menu_file;
 			MenuActionProvider* menu_edit;
+			MenuActionProvider* menu_window;
 			MenuActionProvider* menu_help;
 			
 			MenuActionProvider* menu_tray;
 			
 			QList<ActionProvider*> providers;
+			QList<ToolWindow*> tool_windows;
 			
 			QWinTaskbarButton* taskbar_button;
 			QSystemTrayIcon* tray_icon;

@@ -60,7 +60,7 @@ namespace nova {
 			};
 			
 			/**
-			 * @brief Constructs a new notification.
+			 * Constructs a new notification.
 			 *
 			 * Every notification has a "Close" action which mustn't be manually added.
 			 *
@@ -187,15 +187,18 @@ namespace nova {
 	 *
 	 * Both types are implemented in this class.
 	 *
+	 * This class must be derived.
+	 *
 	 * @sa Notification
 	 */
 	class NOVA_API Notifier {
 		public:
 			/**
-			 * @brief Constructs a new notifier.
+			 * Constructs a new notifier.
 			 */
 			inline Notifier() : current_notification(nullptr) {
 			}
+			virtual ~Notifier() noexcept = default;
 			
 			/**
 			 * @brief Shows a notification without creating a Notification object.

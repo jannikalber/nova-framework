@@ -53,7 +53,7 @@ namespace nova {
 		
 		public:
 			/**
-			 * @brief Constructs a new task.
+			 * Constructs a new task.
 			 *
 			 * The task isn't started. Call start().
 			 *
@@ -151,16 +151,19 @@ namespace nova {
 	 * The workbench's progress monitor shows the hint "Ready" in the status bar, if there's no active task
 	 * (context: "nova/progress").
 	 *
+	 * This class must be derived.
+	 *
 	 * @sa Task
 	 */
 	class NOVA_API ProgressMonitor {
 		public:
 			/**
-			 * @brief Constructs a new progress monitor.
+			 * Constructs a new progress monitor.
 			 *
 			 * @param notifier If a task fails, the error message is sent to this notifier (optional, default: none).
 			 */
 			explicit ProgressMonitor(Notifier* notifier = nullptr);
+			virtual ~ProgressMonitor() noexcept = default;
 			
 			/**
 			 * @brief Returns a pointer to the active task or nullptr if there's none.

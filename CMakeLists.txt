@@ -56,7 +56,8 @@ set(NOVA_PUBLIC_HEADERS
     include/quickdialog.h
     include/searchbar.h
     include/progress.h
-    include/notification.h)
+    include/notification.h
+    include/toolwindow.h)
 add_library(Nova SHARED
             # moc needs adding the headers
             ${NOVA_PUBLIC_HEADERS}
@@ -66,7 +67,8 @@ add_library(Nova SHARED
             src/quickdialog.cpp
             src/searchbar.cpp
             src/progress.cpp
-            src/notification.cpp)
+            src/notification.cpp
+            src/toolwindow.cpp)
 
 set_target_properties(Nova PROPERTIES
                       OUTPUT_NAME novaf

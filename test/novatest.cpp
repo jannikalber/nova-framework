@@ -3,6 +3,7 @@
  * All rights reserved.
  */
 
+#include <QtCore/Qt>
 #include <QtCore/QThread>
 #include <QtCore/QString>
 #include <QtCore/QList>
@@ -16,14 +17,31 @@
 #include <QtWidgets/QTextEdit>
 
 #include <workbench.h>
+#include <toolwindow.h>
+#include <quickdialog.h>
+#include <actionprovider.h>
 #include <progress.h>
 #include <notification.h>
-#include <actionprovider.h>
-#include <quickdialog.h>
+
+class TestToolWindow : public nova::ToolWindow {
+	public:
+		inline TestToolWindow() : nova::ToolWindow("My Tool Window", Qt::Vertical, true, Qt::LeftDockWidgetArea) {
+			set_content_widget(new QTextEdit(this));
+			
+			QAction* action1 = ConstructAction("Tool Window 1");
+			QAction* action2 = ConstructAction("Tool Window 2");
+			action1->setIcon(QApplication::style()->standardIcon(QStyle::SP_DirClosedIcon));
+			action2->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
+			ShowAction(action1);
+			ShowAction(action2, true);
+		}
+};
 
 class Workbench : public nova::Workbench {
 	public:
 		inline Workbench() : nova::Workbench() {
+			new TestToolWindow();
+			
 			// Status bar
 			AddStatusBarWidget(new QLabel("Label 1", this), 2);
 			AddStatusBarWidget(new QLabel("Label 2", this));
@@ -31,22 +49,27 @@ class Workbench : public nova::Workbench {
 			ConstructSystemTrayIcon();
 			
 			// Menu demo
-			nova::MenuActionProvider* menu_file = ConstructMenu(Workbench::File);
+			nova::MenuActionProvider* menu_file = ConstructMenu(Workbench::Menu_File, true);
 			
-			QAction* check_action = get_standard_menu(Workbench::File)->ConstructAction("&Checkable Action");
+			QAction* check_action = get_standard_menu(Workbench::Menu_File)->ConstructAction("&Checkable Action");
 			check_action->setCheckable(true);
 			check_action->setWhatsThis("What's This?");
-			menu_file->ShowAction(check_action);
+			menu_file->ShowAction(check_action, false, true);
 			
-			QAction* action_exit = ConstructStandardAction(Workbench::Exit, menu_file);
+			QAction* action_exit = ConstructStandardAction(Workbench::Action_Exit, menu_file);
 			menu_file->ShowAction(action_exit, true);
 			
 			get_system_tray_menu()->ShowAction(get_system_tray_menu()->ConstructAction("&Test"));
 			get_system_tray_menu()->ShowAction(action_exit, true);
 			
-			nova::MenuActionProvider* menu_edit = ConstructMenu(Workbench::Edit);
-			ConstructMenu(Workbench::Help);
-			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Help);
+			nova::MenuActionProvider* menu_edit = ConstructMenu(Workbench::Menu_Edit, true);
+			
+			ConstructMenu(Workbench::Menu_Window);
+			get_standard_menu(Workbench::Menu_Window)->ShowAction(
+					ConstructStandardAction(Workbench::Action_ResetLayout, get_standard_menu(Workbench::Menu_Window)));
+			
+			ConstructMenu(Workbench::Menu_Help);
+			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Menu_Help);
 			
 			// QuickDialog / Notification demo 1
 			QAction* edit_action = menu_edit->ConstructAction("&Edit Demo");
@@ -64,11 +87,11 @@ class Workbench : public nova::Workbench {
 				                                            nova::Notification::Information, false, action_list);
 				notification->Show();
 			});
-			menu_edit->ShowAction(edit_action);
+			menu_edit->ShowAction(edit_action, false, true);
 			menu_edit->ShowAction(check_action, true);
 			
-			menu_help->ShowAction(ConstructStandardAction(Workbench::SearchBar, menu_help));
-			menu_help->ShowAction(ConstructStandardAction(Workbench::DirectHelp, menu_help), true);
+			menu_help->ShowAction(ConstructStandardAction(Workbench::Action_SearchBar, menu_help));
+			menu_help->ShowAction(ConstructStandardAction(Workbench::Action_DirectHelp, menu_help), true);
 			
 			// QuickDialog demo 2
 			QAction* help_action = menu_help->ConstructAction("&Help Demo");

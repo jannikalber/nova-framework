@@ -37,7 +37,7 @@ namespace nova {
 		
 		public:
 			/**
-			 * @brief Creates a new search bar.
+			 * Creates a new search bar.
 			 *
 			 * Use exec() to run it.
 			 *

@@ -39,7 +39,7 @@ namespace nova {
 	class NOVA_API QuickDialog : public QDialog {
 		public:
 			/**
-			 * @brief Constructs a new QuickDialog.
+			 * Constructs a new QuickDialog.
 			 *
 			 * Set the input widget by calling set_input_widget() and run the dialog by calling exec().
 			 *

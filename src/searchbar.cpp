@@ -107,9 +107,8 @@ namespace nova {
 					
 					auto* item = new QTreeWidgetItem(results);
 					
-					item->setText(0, j->toolTip() +
-					                 (j->shortcut().isEmpty() ? "" : " (" + j->shortcut().toString() +
-					                                                 ")"));  // Adding the shortcut if available
+					item->setText(0, j->toolTip() +  // Adding the shortcut if available
+					                 (j->shortcut().isEmpty() ? "" : " (" + j->shortcut().toString() + ")"));
 					item->setText(1, i->get_title());
 					item->setToolTip(0, j->whatsThis());
 					item->setFlags(Qt::ItemIsEnabled |
