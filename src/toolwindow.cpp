@@ -15,15 +15,12 @@
 #include "workbench.h"
 
 namespace nova {
-	ToolWindow::ToolWindow(const QString& title, Qt::Orientation orientation, bool needs_tool_bar,
-	                       Qt::DockWidgetArea default_layout,
-	                       Workbench* window) :
-			QDockWidget(title, window), ActionProvider(title, window),
+	ToolWindow::ToolWindow(QWidget* parent, const QString& title, Qt::Orientation orientation, bool needs_tool_bar,
+	                       Qt::DockWidgetArea default_layout) :
+			QDockWidget(title, parent), ActionProvider(title),
 			nested_main_window(new QMainWindow()),
 			tool_bar(needs_tool_bar ? new QToolBar(nested_main_window) : nullptr), default_layout(default_layout),
 			default_hidden(default_layout == Qt::NoDockWidgetArea) {
-		window->tool_windows << this;
-		
 		setAllowedAreas(orientation == Qt::Vertical ? Qt::LeftDockWidgetArea | Qt::RightDockWidgetArea
 		                                            : Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
 		nested_main_window->setContextMenuPolicy(Qt::PreventContextMenu);
@@ -44,21 +41,10 @@ namespace nova {
 			if (default_hidden) hide();
 			this->default_layout = (orientation == Qt::Vertical ? Qt::LeftDockWidgetArea : Qt::BottomDockWidgetArea);
 		}
-		
-		window->addDockWidget(this->default_layout, this);
 	}
 	
 	ToolWindow::~ToolWindow() noexcept {
 		delete nested_main_window;
-	}
-	
-	void ToolWindow::ResetLayout() {
-		hide();
-		setFloating(false);
-		workbench->removeDockWidget(this);
-		
-		workbench->addDockWidget(default_layout, this);
-		if (!default_hidden) show();
 	}
 	
 	QWidget* ToolWindow::get_content_widget() const {

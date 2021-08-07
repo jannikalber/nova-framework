@@ -1,0 +1,103 @@
+<ui version="4.0" connectslotsbyname="false">
+	<class>SettingsDialog</class>
+	
+	<widget class="QDialog" name="SettingsDialog">
+		<property name="geometry">
+			<rect>
+				<x>0</x>
+				<y>0</y>
+				<width>640</width>
+				<height>480</height>
+			</rect>
+		</property>
+		
+		<property name="contextMenuPolicy">
+			<enum>Qt::PreventContextMenu</enum>
+		</property>
+		
+		<layout class="QVBoxLayout">
+			<item>
+				<widget class="QSplitter" name="splNavigationPages">
+					<property name="orientation">
+						<enum>Qt::Horizontal</enum>
+					</property>
+					
+					<!-- Navigation view and filter widget -->
+					<widget class="QWidget">
+						<layout class="QVBoxLayout">
+							<item>
+								<widget class="QLabel" name="lblMatches">
+									<property name="visible">
+										<bool>false</bool>
+									</property>
+									
+									<property name="alignment">
+										<enum>Qt::AlignCenter</enum>
+									</property>
+								</widget>
+							</item>
+							
+							<item>
+								<widget class="QLineEdit" name="lneFilter">
+									<property name="clearButtonEnabled">
+										<bool>true</bool>
+									</property>
+								</widget>
+							</item>
+							
+							<item>
+								<widget class="QListWidget" name="lswNavigation">
+									<property name="currentRow">
+										<number>0</number>
+									</property>
+								</widget>
+							</item>
+						</layout>
+					</widget>
+					
+					<widget class="QStackedWidget" name="stwPages" />
+				</widget>
+			</item>
+			
+			<item>
+				<widget class="QLabel" name="lblRestartInfo">
+					<property name="sizePolicy">
+						<sizepolicy hsizetype="Preferred" vsizetype="Fixed" />
+					</property>
+				</widget>
+			</item>
+			
+			<!-- Dialog buttons -->
+			<item>
+				<widget class="QDialogButtonBox" name="btbButtonBox">
+					<property name="standardButtons">
+						<set>QDialogButtonBox::RestoreDefaults | QDialogButtonBox::Ok | QDialogButtonBox::Cancel | QDialogButtonBox::Apply</set>
+					</property>
+				</widget>
+			</item>
+		</layout>
+	</widget>
+	
+	<connections>
+		<connection>
+			<sender>lswNavigation</sender>
+			<signal>currentRowChanged(int)</signal>
+			<receiver>stwPages</receiver>
+			<slot>setCurrentIndex(int)</slot>
+		</connection>
+		
+		<connection>
+			<sender>btbButtonBox</sender>
+			<signal>accepted()</signal>
+			<receiver>SettingsDialog</receiver>
+			<slot>accept()</slot>
+		</connection>
+		
+		<connection>
+			<sender>btbButtonBox</sender>
+			<signal>rejected()</signal>
+			<receiver>SettingsDialog</receiver>
+			<slot>reject()</slot>
+		</connection>
+	</connections>
+</ui>

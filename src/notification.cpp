@@ -57,6 +57,7 @@ namespace nova {
 	void Notification::Show() {
 		notifier->Enable(this);
 	}
+	
 	void Notification::Close() {
 		notifier->Disable(this);
 		delete this;

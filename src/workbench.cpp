@@ -23,6 +23,7 @@
 #include "actionprovider.h"
 #include "searchbar.h"
 #include "toolwindow.h"
+#include "settings.h"
 
 namespace nova {
 	Workbench* workbench;
@@ -31,7 +32,7 @@ namespace nova {
 			: QMainWindow(parent), ProgressMonitor(this), Notifier(), ui(new Ui::Workbench()), menu_file(nullptr),
 			  menu_edit(nullptr), menu_window(nullptr), menu_help(nullptr), menu_tray(nullptr),
 			  providers(QList<ActionProvider*>()), tool_windows(QList<ToolWindow*>()),
-			  taskbar_button(new QWinTaskbarButton(this)), tray_icon(nullptr) {
+			  settings_pages(QList<SettingsPage*>()), taskbar_button(new QWinTaskbarButton(this)), tray_icon(nullptr) {
 		workbench = this;
 		ui->setupUi(this);
 		
@@ -46,7 +47,8 @@ namespace nova {
 	}
 	
 	MenuActionProvider* Workbench::ConstructMenu(const QString& title, bool needs_tool_bar) {
-		auto* menu = new MenuActionProvider(title, needs_tool_bar, this);
+		auto* menu = new MenuActionProvider(this, title, needs_tool_bar);
+		RegisterActionProvider(menu);
 		menuBar()->addMenu(menu);
 		
 		QToolBar* tool_bar = menu->get_tool_bar();
@@ -64,7 +66,7 @@ namespace nova {
 			case Menu_Edit:
 				menu_edit = ConstructMenu(QApplication::translate("nova/menu", "&Edit"), needs_tool_bar);
 				return menu_edit;
-				
+			
 			case Menu_Window:
 				menu_window = ConstructMenu(QApplication::translate("nova/menu", "&Window"), needs_tool_bar);
 				return menu_window;
@@ -88,7 +90,14 @@ namespace nova {
 				connect(action, &QAction::triggered, this, &Workbench::close);
 				
 				break;
+			
+			case Action_Settings:
+				action = provider->ConstructAction(QApplication::translate("nova/action", "&Settings"));
+				action->setShortcut(QKeySequence("Ctrl+Shift+S"));
+				connect(action, &QAction::triggered, [this]() { OpenSettings(nullptr); });
 				
+				break;
+			
 			case Action_ResetLayout:
 				action = provider->ConstructAction(QApplication::translate("nova/action", "Restore &Default Layout"));
 				connect(action, &QAction::triggered, [this]() { ResetLayout(); });
@@ -106,7 +115,7 @@ namespace nova {
 				action = provider->ConstructAction(QApplication::translate("nova/action", "&Search..."));
 				action->setShortcut(QKeySequence("F3"));
 				connect(action, &QAction::triggered, [this]() {
-					class SearchBar bar(this);
+					SearchBar bar(this);
 					bar.exec();
 				});
 				
@@ -127,7 +136,8 @@ namespace nova {
 	
 	QSystemTrayIcon* Workbench::ConstructSystemTrayIcon() {
 		tray_icon = new QSystemTrayIcon(QApplication::windowIcon(), this);
-		menu_tray = new MenuActionProvider(QApplication::translate("nova/menu", "Tray Icon"), false, this);
+		menu_tray = new MenuActionProvider(this, QApplication::translate("nova/menu", "Tray Icon"), false);
+		RegisterActionProvider(menu_tray);
 		
 		tray_icon->setContextMenu(menu_tray);
 		tray_icon->show();
@@ -136,6 +146,12 @@ namespace nova {
 		connect(tray_icon, &QSystemTrayIcon::messageClicked, this, [this] { sysTrayActivated(); });
 		
 		return tray_icon;
+	}
+	
+	void Workbench::OpenSettings(SettingsPage* page) {
+		SettingsDialog dialog(this);
+		if (page != nullptr) dialog.OpenSettingsPage(page);
+		dialog.exec();
 	}
 	
 	MenuActionProvider* Workbench::get_standard_menu(Workbench::StandardMenu standard_menu) const {
@@ -148,7 +164,7 @@ namespace nova {
 			
 			case Menu_Window:
 				return menu_window;
-				
+			
 			case Menu_Help:
 				return menu_help;
 			
@@ -167,7 +183,12 @@ namespace nova {
 		}
 		
 		for (ToolWindow* i : tool_windows) {
-			i->ResetLayout();
+			i->hide();
+			i->setFloating(false);
+			removeDockWidget(i);
+			
+			addDockWidget(i->default_layout, i);
+			if (!i->default_hidden) i->show();
 		}
 	}
 	
@@ -242,6 +263,7 @@ namespace nova {
 		// Restore window when minimized
 		setWindowState((windowState() & ~Qt::WindowMinimized) | Qt::WindowActive);
 	}
+	
 	void Workbench::notificationLinkActivated(const QString& link) {
 		ActivateNotificationAction(link);
 	}

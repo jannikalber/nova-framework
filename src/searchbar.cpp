@@ -25,7 +25,7 @@
 #include "actionprovider.h"
 
 namespace nova {
-	SearchBar::SearchBar(Workbench* parent) : QuickDialog(parent), action_results(QList<QAction*>()) {
+	SearchBar::SearchBar(Workbench* window) : QuickDialog(window), action_results(QList<QAction*>()) {
 		set_title(QApplication::translate("nova/searchbar", "Search..."));
 		
 		auto* widget = new QWidget(this);

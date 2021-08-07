@@ -39,32 +39,26 @@ namespace nova {
 	class NOVA_API ToolWindow : public QDockWidget, public ActionProvider {
 		public:
 			/**
-			 * @brief Adds the tool window to the workbench (see parameter window below).
+			 * Creates a new tool window.
 			 *
 			 * Use set_content_widget() for changing the window's content.
 			 *
+			 * Your subclass must have a constructor with QWidget* as parameter (the parent window).
+			 * Call Workbench::RegisterToolWindow<YourSubclass>() to register the tool window class.
+			 *
+			 * @param parent The parent window
 			 * @param title The tool window's title
 			 * @param orientation if the tool window is a vertical or a horizontal one.
 			 * @param needs_tool_bar if a tool bar should also be created and shown (optional, default: false).
 			 * @param default_layout The tool window's initial position or Qt::NoDockWidgetArea if it should be hidden
 			 * by default. (optional, hidden)
-			 * @param window The tool window's parent workbench and widget (optional, default: nova::workbench)
 			 *
 			 * @sa set_content_widget()
+			 * @sa Workbench::RegisterToolWindow()
 			 */
-			explicit ToolWindow(const QString& title, Qt::Orientation orientation, bool needs_tool_bar = false,
-			                    Qt::DockWidgetArea default_layout = Qt::NoDockWidgetArea,
-			                    Workbench* window = workbench);
-			
-			/**
-			 * Destructs the tool window.
-			 */
+			ToolWindow(QWidget* parent, const QString& title, Qt::Orientation orientation,
+			           bool needs_tool_bar = false, Qt::DockWidgetArea default_layout = Qt::NoDockWidgetArea);
 			virtual ~ToolWindow() noexcept;
-			
-			/**
-			 * @brief Resets the tool window to its default position or hides it if it's hidden by default.
-			 */
-			void ResetLayout();
 			
 			/**
 			 * @brief Returns the tool window's content widget.
@@ -87,6 +81,8 @@ namespace nova {
 			void ShowAction(QAction* action, bool separate = false, bool is_important = true) override;
 		
 		private:
+			friend class Workbench;
+			
 			QMainWindow* nested_main_window;
 			QToolBar* tool_bar;
 			

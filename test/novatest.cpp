@@ -6,26 +6,36 @@
 #include <QtCore/Qt>
 #include <QtCore/QThread>
 #include <QtCore/QString>
+#include <QtCore/QVariant>
+#include <QtCore/QSettings>
 #include <QtCore/QList>
 #include <QtGui/QIcon>
 #include <QtWidgets/QStyle>
 #include <QtWidgets/QApplication>
+#include <QtWidgets/QWidget>
 #include <QtWidgets/QMenu>
 #include <QtWidgets/QAction>
 #include <QtWidgets/QLabel>
 #include <QtWidgets/QLineEdit>
+#include <QtWidgets/QCheckBox>
 #include <QtWidgets/QTextEdit>
+#include <QtWidgets/QVBoxLayout>
 
 #include <workbench.h>
 #include <toolwindow.h>
+#include <settings.h>
 #include <quickdialog.h>
 #include <actionprovider.h>
 #include <progress.h>
 #include <notification.h>
 
+QSettings settings("this is a", "test storage");
+
 class TestToolWindow : public nova::ToolWindow {
 	public:
-		inline TestToolWindow() : nova::ToolWindow("My Tool Window", Qt::Vertical, true, Qt::LeftDockWidgetArea) {
+		inline explicit TestToolWindow(QWidget* parent) : nova::ToolWindow(parent, "My Tool Window",
+		                                                                   Qt::Vertical, true,
+		                                                                   Qt::LeftDockWidgetArea) {
 			set_content_widget(new QTextEdit(this));
 			
 			QAction* action1 = ConstructAction("Tool Window 1");
@@ -37,10 +47,52 @@ class TestToolWindow : public nova::ToolWindow {
 		}
 };
 
+class TestSettingsPage : public nova::SettingsPage {
+	public:
+		inline explicit TestSettingsPage(QObject* parent) : nova::SettingsPage(parent, "My Settings Page"),
+		                                                    edit_1(nullptr), edit_2(nullptr) {}
+	
+	protected:
+		inline void CreateUi(QWidget* start_widget) override {
+			auto* layout = new QVBoxLayout(start_widget);
+			
+			edit_1 = new QLineEdit(start_widget);
+			edit_1->setPlaceholderText("String setting");
+			edit_1->setProperty("nova/setting", "String setting");
+			
+			edit_2 = new QCheckBox(start_widget);
+			edit_2->setText("Bool setting");
+			edit_2->setProperty("nova/setting", "Bool setting");
+			
+			layout->addWidget(edit_1);
+			layout->addWidget(edit_2);
+		}
+		
+		inline void LoadSettings() override {
+			edit_1->setText(settings.value("edit_1").toString());
+			edit_2->setChecked(settings.value("edit_2").toBool());
+		}
+		
+		inline void Apply() override {
+			settings.setValue("edit_1", edit_1->text());
+			settings.setValue("edit_2", edit_2->isChecked());
+		}
+		
+		inline void RestoreDefaults() override {
+			settings.setValue("edit_1", "My string");
+			settings.setValue("edit_2", true);
+		}
+	
+	private:
+		QLineEdit* edit_1;
+		QCheckBox* edit_2;
+};
+
 class Workbench : public nova::Workbench {
 	public:
 		inline Workbench() : nova::Workbench() {
-			new TestToolWindow();
+			RegisterToolWindow<TestToolWindow>();
+			RegisterSettingsPage<TestSettingsPage>();
 			
 			// Status bar
 			AddStatusBarWidget(new QLabel("Label 1", this), 2);
@@ -64,13 +116,6 @@ class Workbench : public nova::Workbench {
 			
 			nova::MenuActionProvider* menu_edit = ConstructMenu(Workbench::Menu_Edit, true);
 			
-			ConstructMenu(Workbench::Menu_Window);
-			get_standard_menu(Workbench::Menu_Window)->ShowAction(
-					ConstructStandardAction(Workbench::Action_ResetLayout, get_standard_menu(Workbench::Menu_Window)));
-			
-			ConstructMenu(Workbench::Menu_Help);
-			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Menu_Help);
-			
 			// QuickDialog / Notification demo 1
 			QAction* edit_action = menu_edit->ConstructAction("&Edit Demo");
 			edit_action->setIcon(QApplication::style()->standardIcon(QStyle::SP_DriveCDIcon));
@@ -89,6 +134,15 @@ class Workbench : public nova::Workbench {
 			});
 			menu_edit->ShowAction(edit_action, false, true);
 			menu_edit->ShowAction(check_action, true);
+			
+			menu_edit->ShowAction(ConstructStandardAction(Workbench::Action_Settings, menu_edit), true);
+			
+			ConstructMenu(Workbench::Menu_Window);
+			get_standard_menu(Workbench::Menu_Window)->ShowAction(
+					ConstructStandardAction(Workbench::Action_ResetLayout, get_standard_menu(Workbench::Menu_Window)));
+			
+			ConstructMenu(Workbench::Menu_Help);
+			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Menu_Help);
 			
 			menu_help->ShowAction(ConstructStandardAction(Workbench::Action_SearchBar, menu_help));
 			menu_help->ShowAction(ConstructStandardAction(Workbench::Action_DirectHelp, menu_help), true);
@@ -112,6 +166,7 @@ class Workbench : public nova::Workbench {
 				dialog.exec();
 			});
 			menu_help->ShowAction(help_action);
+			
 			
 			// ProgressMonitor demo
 			auto* task1 = new nova::Task(this, "Testing 1", true,

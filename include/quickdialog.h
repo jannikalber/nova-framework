@@ -121,7 +121,7 @@ namespace nova {
 		
 		protected:
 			/**
-			 * @brief Reimplements QWidget::keyPressEvent()
+			 * Reimplements QWidget::keyPressEvent()
 			 */
 			void keyPressEvent(QKeyEvent* event) override;
 		

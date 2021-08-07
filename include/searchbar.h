@@ -31,6 +31,10 @@ namespace nova {
 	 *
 	 * The dialog is a line edit which proposes matching actions from all ActionProvider subtypes having the workbench as parent.
 	 * The results can be invoked immediately by keyboard. These results being checkable contain a check box to change their state.
+	 *
+	 * The translations belong to the context "nova/searchbar".
+	 *
+	 * @sa ActionProvider
 	 */
 	class NOVA_API SearchBar : public QuickDialog {
 		Q_OBJECT
@@ -41,15 +45,13 @@ namespace nova {
 			 *
 			 * Use exec() to run it.
 			 *
-			 * The translations belong to the context "nova/searchbar".
-			 *
-			 * @param parent The workbench whose actions can be found (optional, default: nova::workbench)
+			 * @param window The workbench whose actions can be found (optional, default: nova::workbench)
 			 */
-			explicit SearchBar(Workbench* parent = workbench);
+			explicit SearchBar(Workbench* window = workbench);
 		
 		protected:
 			/**
-			 * @brief Reimplements QWidget::keyPressEvent()
+			 * Reimplements QWidget::keyPressEvent()
 			 */
 			void keyPressEvent(QKeyEvent* event);
 		

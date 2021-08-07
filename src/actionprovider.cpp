@@ -14,10 +14,8 @@
 #include "workbench.h"
 
 namespace nova {
-	ActionProvider::ActionProvider(const QString& title, Workbench* window)
-			: object(QObject()), title(title) {
-		window->providers << this;
-	}
+	ActionProvider::ActionProvider(const QString& title)
+			: object(QObject()), title(title) {}
 	
 	QAction* ActionProvider::ConstructAction(const QString& text) {
 		auto* action = new QAction(&object);
@@ -25,9 +23,15 @@ namespace nova {
 		return action;
 	}
 	
-	MenuActionProvider::MenuActionProvider(const QString& title, bool needs_tool_bar, Workbench* window)
-			: ActionProvider(QString(title).replace('&', " "), window), QMenu(window),
-			  tool_bar(needs_tool_bar ? new QToolBar(get_title(), this) : nullptr) {
+	void TempActionProvider::ClearActions() {
+		for (QAction* i : ListActions()) {
+			delete i;
+		}
+	}
+	
+	MenuActionProvider::MenuActionProvider(QWidget* parent, const QString& title, bool needs_tool_bar)
+			: ActionProvider(QString(title).replace('&', " ")), QMenu(parent),
+			  tool_bar(needs_tool_bar ? new QToolBar(get_title(), parent) : nullptr) {
 		setTitle(title);
 		if (tool_bar != nullptr) tool_bar->setIconSize(QSize(16, 16));
 	}

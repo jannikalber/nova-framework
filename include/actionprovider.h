@@ -37,12 +37,16 @@ namespace nova {
 	class NOVA_API ActionProvider {
 		public:
 			/**
-			 * @brief Initializes the ActionProvider and associates it to the workbench (see parameter window below).
+			 * Initializes the ActionProvider.
+			 *
+			 * Note that you have to associate the provider to your workbench.
+			 *
+			 * This class should be derived.
 			 *
 			 * @param title The title of the category the provider's actions belong to
-			 * @param window The provider's Workbench (optional, default: nova::workbench)
+			 * @sa Workbench::RegisterActionProvider()
 			 */
-			explicit ActionProvider(const QString& title, Workbench* window = workbench);
+			explicit ActionProvider(const QString& title);
 			virtual ~ActionProvider() noexcept = default;
 			
 			/**
@@ -89,6 +93,54 @@ namespace nova {
 	};
 	
 	/**
+	 * @brief A minimal extended standard action provider which is designed to contain changeable actions.
+	 * @headerfile actionprovider.h <nova/actionprovider.h>
+	 *
+	 * There are two extensions:
+	 * - All actions can be cleared
+	 * - There is a pure virtual method in which the provider's actions are recreated
+	 *
+	 * For example, this make sense if you want a recent files list to be found using the SearchBar.
+	 *
+	 * @sa ActionProvider
+	 */
+	class NOVA_API TempActionProvider : public ActionProvider {
+		public:
+			/**
+			 * Initializes the TempActionProvider.
+			 *
+			 * @param title The provider's title
+			 * @sa ActionProvider::ActionProvider()
+			 */
+			inline explicit TempActionProvider(const QString& title) : ActionProvider(title) {}
+			virtual ~TempActionProvider() noexcept = default;
+			
+			/**
+			 * @brief Recreates the provider's action considering the actual state of your application.
+			 *
+			 * This method is pure virtual and must be implemented
+			 *
+			 * @param creation_parameter This can be any parameter needed to recreate (optional, default: nullptr)
+			 */
+			virtual void RecreateActions(void* creation_parameter = nullptr) = 0;
+		
+		protected:
+			/**
+			 * @brief Clears and deletes all actions associated with this provider.
+			 *
+			 * Note: All actions are also destructed.
+			 */
+			void ClearActions();
+			
+			/**
+			 * Reimplements ActionProvider::ShowAction()
+			 *
+			 * ShowAction() doesn't make sense for TempActionProviders.
+			 */
+			inline void ShowAction(QAction* action, bool separate, bool is_important) override {}
+	};
+	
+	/**
 	 * @brief Implements an ActionProvider
 	 * @headerfile actionprovider.h <nova/actionprovider.h>
 	 *
@@ -102,16 +154,17 @@ namespace nova {
 			 * Constructs a new MenuActionProvider
 			 *
 			 * Note: The menu isn't shown in the menu bar, for that use Workbench::ConstructMenu().
+			 * Don't forget to register the action provider.
 			 *
+			 * @param parent The QObject's parent
 			 * @param title The menu's title (it might contain the hotkey character "&")
 			 * @param needs_tool_bar if a tool bar should also be created (optional, default: false)
-			 * @param window The menu's parent workbench and widget (optional, default: nova::workbench)
+			 * @sa Workbench::RegisterActionProvider()
 			 */
-			explicit MenuActionProvider(const QString& title, bool needs_tool_bar = false,
-			                            Workbench* window = workbench);
+			MenuActionProvider(QWidget* parent, const QString& title, bool needs_tool_bar = false);
 			
 			/**
-			 * @brief Reimplements ActionProvider::ShowAction()
+			 * Reimplements ActionProvider::ShowAction()
 			 *
 			 * Important actions are shown in the tool bar.
 			 */

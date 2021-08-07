@@ -14,7 +14,9 @@
 
 #include "nova.h"
 #include "progress.h"
+#include "toolwindow.h"
 #include "notification.h"
+#include "settings.h"
 
 QT_USE_NAMESPACE
 QT_BEGIN_NAMESPACE
@@ -32,7 +34,6 @@ namespace nova {
 	class ActionProvider;
 	class MenuActionProvider;
 	class SearchBar;
-	class ToolWindow;
 	
 	/**
 	 * @brief This class represents the main window of the application.
@@ -72,6 +73,7 @@ namespace nova {
 			 * @brief A list of standard actions which are handled by Nova:
 			 *
 			 * - Action_Exit to exit the application [Ctrl+Q] (title: "&Exit")
+			 * - Action_Settings to open the (automatically available) settings dialog [Ctrl+Shift+S] (title: "&Settings")
 			 * - Action_ResetLayout for resetting all tool bars and tool windows to their default position
 			 * (title: "Restore &Default Layout")
 			 * - Action_DirectHelp to enable QWhatsThis [F2] (title: "&Direct Help")
@@ -82,7 +84,7 @@ namespace nova {
 			 * @sa ConstructStandardAction()
 			 */
 			enum StandardAction {
-				Action_Exit, Action_ResetLayout, Action_DirectHelp, Action_SearchBar
+				Action_Exit, Action_Settings, Action_ResetLayout, Action_DirectHelp, Action_SearchBar
 			};
 			
 			/**
@@ -168,6 +170,63 @@ namespace nova {
 			QSystemTrayIcon* ConstructSystemTrayIcon();
 			
 			/**
+			 * @brief Adds an ActionProvider to the workbench's provider list.
+			 *
+			 * Its actions can be found using the SearchBar once their provider is registered.
+			 *
+			 * @param provider The ActionProvider to be registered
+			 */
+			inline void RegisterActionProvider(ActionProvider* provider) {
+				providers << provider;
+			}
+			
+			/**
+			 * @brief Adds a ToolWindow class to the workbench.
+			 *
+			 * The ToolWindow is shown and available once registered.
+			 *
+			 * The subclass must have a constructor with QWidget* as parameter (the tool window's parent window)
+			 *
+			 * @tparam T The class to be registered
+			 */
+			template<class T>
+			void RegisterToolWindow() {
+				ToolWindow* tool_window = new T(static_cast<QWidget*>(this));
+				
+				RegisterActionProvider(tool_window);
+				tool_windows << tool_window;
+				
+				addDockWidget(tool_window->default_layout, tool_window);
+			}
+			
+			/**
+			 * @brief Adds a SettingsPage class to the workbench.
+			 *
+			 * The SettingsPage will be shown in the SettingsDialog and can be found using the SearchBar.
+			 *
+			 * The subclass must have a constructor with QObject* as parameter (the page's parent)
+			 *
+			 * @tparam T The class to be registered
+			 * @sa OpenSettings()
+			 */
+			template<class T>
+			void RegisterSettingsPage() {
+				SettingsPage* settings_page = new T(static_cast<QObject*>(this));
+				settings_page->RecreateActions(this);  // Associated workbench as parameter
+				
+				RegisterActionProvider(settings_page);
+				settings_pages << settings_page;
+			}
+			
+			/**
+			 * @brief Starts a SettingsDialog with the workbench's SettingsPage objects being registered.
+			 *
+			 * @param page Which page should be opened first (optional, default: the first one)
+			 * @sa SettingsDialog
+			 */
+			void OpenSettings(SettingsPage* page = nullptr);
+			
+			/**
 			 * @brief Returns the given standard menu which was created using ConstructMenu(StandardMenu).
 			 *
 			 * @return The menu or nullptr if the menu is never constructed
@@ -202,20 +261,26 @@ namespace nova {
 			/**
 			 * @brief Returns a list of all action providers being associated with this workbench.
 			 *
-			 * They automatically get associated when their constructor is called.
-			 *
 			 * @sa ActionProvider
+			 * @sa RegisterActionProvider()
 			 */
 			inline QList<ActionProvider*> get_action_providers() const { return providers; }
 			
 			/**
 			 * @brief Returns a list of all tool windows being associated with this workbench.
 			 *
-			 * They automatically get associated when their constructor is called.
-			 *
 			 * @sa ToolWindow
+			 * @sa RegisterToolWindow()
 			 */
 			inline QList<ToolWindow*> get_tool_windows() const { return tool_windows; };
+			
+			/**
+			 * @brief Returns a list of all settings pages being associated with this workbench.
+			 *
+			 * @sa SettingsPage
+			 * @sa RegisterSettingsPage()
+			 */
+			inline QList<SettingsPage*> get_settings_pages() const { return settings_pages; };
 		
 		protected:
 			/**
@@ -228,33 +293,32 @@ namespace nova {
 			virtual void ResetLayout();
 			
 			/**
-			 * @brief Reimplements QWidget::showEvent()
+			 * Reimplements QWidget::showEvent()
 			 *
 			 * Please do always call this implementation when overriding.
 			 */
 			void showEvent(QShowEvent* event) override;
 			
 			/**
-			 * @brief Reimplements ProgressMonitor::UpdateProgressView()
+			 * Reimplements ProgressMonitor::UpdateProgressView()
 			 */
 			void UpdateProgressView(bool is_active, Task* task) override;
 			
 			/**
-			 * @brief Reimplements Notifier::UpdateNotificationView()
+			 * Reimplements Notifier::UpdateNotificationView()
 			 */
 			void UpdateNotificationView(bool is_active, Notification* notification) override;
 			
 			/**
-			 * @brief Reimplements Notifier::ShowNotificationPopup()
+			 * Reimplements Notifier::ShowNotificationPopup()
 			 *
 			 * A popup is only shown if the workbench has a tray icon.
 			 */
 			void ShowNotificationPopup(Notification* notification) override;
 		
 		private:
-			friend class ActionProvider;
 			friend class SearchBar;
-			friend class ToolWindow;
+			friend class SettingsDialog;
 			
 			Ui::Workbench* ui;
 			
@@ -267,6 +331,7 @@ namespace nova {
 			
 			QList<ActionProvider*> providers;
 			QList<ToolWindow*> tool_windows;
+			QList<SettingsPage*> settings_pages;
 			
 			QWinTaskbarButton* taskbar_button;
 			QSystemTrayIcon* tray_icon;

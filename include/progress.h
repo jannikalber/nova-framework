@@ -121,7 +121,7 @@ namespace nova {
 			void RunOnMainThread(const std::function<void()>& lambda);
 			
 			/**
-			 * @brief Reimplements QThread::run()
+			 * Reimplements QThread::run()
 			 */
 			void run() override;
 		
