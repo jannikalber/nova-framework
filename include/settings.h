@@ -6,66 +6,66 @@
 #ifndef NOVA_FRAMEWORK_SETTINGS_H
 #define NOVA_FRAMEWORK_SETTINGS_H
 
-#include <QtCore/QtGlobal>
-#include <QtCore/QObject>
-#include <QtCore/QList>
-#include <QtCore/QString>
-#include <QtWidgets/QAction>
-#include <QtWidgets/QDialog>
+#include <QObject>
+#include <QList>
+#include <QString>
+#include <QWidget>
+#include <QAction>
+#include <QDialog>
 
 #include "nova.h"
 #include "actionprovider.h"
 
-QT_BEGIN_NAMESPACE
-QT_USE_NAMESPACE
-class QWidget;
+class QHideEvent;
 
 namespace Ui { class SettingsDialog; }
-QT_END_NAMESPACE
 
 namespace nova {
 	class Workbench;
 	class SettingsPage;
-	
+}
+
+namespace nova {
 	/**
-	 * @brief A dialog which is used to manipulate the application's settings.
+	 * @brief A dialog to manipulate the application's settings.
 	 *
-	 * The dialog consist of SettingsPage objects.
-	 *
-	 * The dialog allows also to filter all settings by name.
-	 *
-	 * Its implementation is complete, you don't have to do extra work.
+	 * The dialog consist of nova::SettingsPage objects and allows
+	 * to filter all settings by name too.
 	 *
 	 * The translations belong to the context "nova/settings".
 	 *
-	 * @sa SettingsPage
-	 * @sa Workbench::OpenSettings()
+	 * @sa nova::SettingsPage
+	 * @sa nova::Workbench::OpenSettings()
 	 */
 	class NOVA_API SettingsDialog : public QDialog {
 		Q_OBJECT
 		
 		public:
 			/**
-			 * Creates a new settings dialog.
+			 * @brief Creates a new settings dialog.
 			 *
 			 * Use exec() to run it.
 			 *
-			 * @param window The workbench whose SettingPage objects can be manipulated (optional, default: nova::workbench)
+			 * @param window The workbench whose nova::SettingPage objects can be manipulated
+			 * (optional, default: nova::workbench)
 			 */
 			explicit SettingsDialog(Workbench* window = workbench);
+			NOVA_DISABLE_COPY(SettingsDialog)
 			
 			/**
-			 * @brief Opens the requested SettingsPage.
-			 *
-			 * This method also works if the dialog is hidden.
-			 *
-			 * @param page The page to be opened
+			 * @brief Opens the requested nova::SettingsPage.
 			 */
 			void OpenSettingsPage(SettingsPage* page);
 		
+		protected:
+			/**
+			 * This method is internally required and should not be called.
+			 */
+			void hideEvent(QHideEvent* event) override;
+		
 		private:
-			Ui::SettingsDialog* ui;
-			Workbench* window;
+			Ui::SettingsDialog* const ui;
+			Workbench* const window;
 			
 			QList<SettingsPage*> pages;
 		
@@ -80,89 +80,142 @@ namespace nova {
 	 * @brief Represents one category/context of the application's settings.
 	 * @headerfile settings.h <nova/settings.h>
 	 *
-	 * When having the SettingsDialog open, this class is one page of the dialog. SettingsPage objects
-	 * live actually longer, so directly manipulating settings is still possible.
+	 * When having nova::SettingsDialog open, this class represents one page of the dialog. Actually, settings pages
+	 * live longer, so directly manipulating settings is still possible.
 	 *
-	 * Therefore, the class provides a "hidden" user interfaces which is used in this case.
+	 * Your subclass must have a constructor with QObject* as parameter (the parent object).
+	 * Call nova::Workbench::RegisterSettingsPage<YourSubclass>() to register the settings page class.
+	 *
+	 * Use set_content_widget() to create a layout with some widgets which represent the settings you want the user to change.
+	 * If you define the dynamic property "nova/setting" (type: string) in your settings widget, it can be found using
+	 * nova::SearchBar. Alternatively, you can define "nova/setting" just as true (type: bool). In this case Nova uses
+	 * the property "text" as title (only if "text" exists). This way is recommended to avoid redundancies.
 	 *
 	 * The translations belong to the context "nova/settings".
 	 *
-	 * This class should be derived.
+	 * This class must be derived.
 	 *
-	 * @sa SettingsDialog
+	 * @sa nova::SettingsDialog
 	 */
 	class NOVA_API SettingsPage : public QObject, public TempActionProvider {
 		public:
-			/**
-			 * Creates a new SettingsPage.
-			 *
-			 * Because such objects also live if there's no active SettingsDialog, the user interfaces
-			 * must be dynamically created (see CreateUi()).
-			 *
-			 * Your subclass must have a constructor with QObject* as parameter (the parent object).
-			 * Call Workbench::RegisterSettingsPage<YourSubclass>() to register the settings page class.
-			 *
-			 * @param parent The QObject's parent
-			 * @param title The page's title (shown in SettingsDialog)
-			 * @sa Workbench::RegisterSettingsPage()
-			 */
-			SettingsPage(QObject* parent, const QString& title);
+			NOVA_DISABLE_COPY(SettingsPage)
 			virtual ~SettingsPage() noexcept;
 			
 			/**
-			 * Reimplements TempActionProvider::RecreateActions()
-			 *
-			 * Don't call this method. This can result in undefined behaviour.
+			 * This method is internally required and should not be called.
 			 */
-			void RecreateActions(void* creation_parameter) override;
+			void RecreateActions(const Properties& creation_parameters) override;
 			
 			/**
-			 * @brief Returns the page's title.
+			 * @brief This pure virtual method is called when the settings are requested
+			 * to be reset, i.e. you have to apply the setting's default values.
+			 *
+			 * You only have to manipulate the configuration files.
 			 */
-			inline QString get_title() const { return title; }
+			virtual void RestoreDefaults() = 0;
+			
+			/**
+			 * @brief This method checks the configuration file.
+			 *
+			 * It returns false in one of the following cases:
+			 * <ol>
+			 *  <li>the settings aren't complete</li>
+			 *  <li>they are corrupted</li>
+			 * </ol>
+			 *
+			 * It's is a hint for the application to recreate its configuration.
+			 * The method allows the application to work on computers which aren't
+			 * well-set-up. Consider checking your configuration on start up by calling
+			 * ValidateConfiguration() and RestoreDefaults() if necessary for each settings
+			 * page.
+			 *
+			 * The default implementation returns true.
+			 *
+			 * @return if the configuration looks okay
+			 */
+			inline virtual bool ValidateConfiguration() { return true; }
+			
+			/**
+			 * @brief Settings pages don't allow changeable titles.
+			 *
+			 * This method is internally required and should not be called.
+			 */
+			inline void set_title(const QString&) override {}
+			
+			/**
+			 * This method is internally required to evaluate the correct title.
+			 */
+			inline QString get_title() { return title; }
+			
+			/**
+			 * @brief Returns the page's content widget.
+			 *
+			 * Note: If there's no active nova::SettingsDialog, this method doesn't return nullptr.
+			 * Else, a pointer to an invisible widget is returned. This is used to manipulate
+			 * the settings directly (e.g. used by nova::SearchBar).
+			 *
+			 * @return A pointer to the page's content (or the "hidden" user interface)
+			 *
+			 * @sa set_content_widget()
+			 */
+			inline QWidget* get_content_widget() const { return content_widget; }
 		
 		protected:
 			/**
-			 * @brief Creates the page's user interface.
+			 * @brief Creates a new nova::SettingsPage.
 			 *
-			 * Note that this method will be called more than once per object.
+			 * @param parent The QObject's parent
+			 * @param title The page's title (shown in nova::SettingsDialog)
 			 *
-			 * This method is pure virtual and must be implemented.
-			 *
-			 * @param start_widget The root widget in which the interface should be inserted
+			 * @sa nova::Workbench::RegisterSettingsPage()
 			 */
-			virtual void CreateUi(QWidget* start_widget) = 0;
+			SettingsPage(QObject* parent, const QString& title);
 			
 			/**
-			 * @brief This method is called when the settings have to be loaded and the widgets have to be updated.
+			 * @brief Sets the page's content page.
 			 *
-			 * This method is pure virtual and must be implemented.
+			 * The page must not be initialized depending on the current configuration.
+			 * This job is done automatically by LoadSettings().
+			 *
+			 * This method must not be called after the settings page is registered.
+			 *
+			 * If you define the dynamic property "nova/setting" (type: string, use the setting's name)
+			 * in the children widgets, they can be found using the SearchBar. Alternatively, you can define "nova/setting"
+			 * just as true (type: bool). In this case Nova uses the property "text" as title. This way is recommended
+			 * to avoid redundancies.
+			 *
+			 * @param content_widget The new widget to be used
+			 */
+			void set_content_widget(QWidget* content_widget);
+			
+			/**
+			 * @brief This pure virtual method is called when the settings have to be loaded and the widgets have to be updated.
+			 *
+			 * Your implementation should fill the widgets by loading the configuration files.
+			 *
+			 * Usually, you don't have to call this method manually.
 			 */
 			virtual void LoadSettings() = 0;
 			
 			/**
-			 * @brief This method is called when the settings have to be saved (e.g. in a configuration file).
+			 * @brief This pure virtual method is called when the settings have to be saved (e.g. in a configuration file).
 			 *
 			 * This is the "reverse" of LoadSettings().
 			 *
-			 * This method is pure virtual and must be implemented.
+			 * If you manually change your settings widget, you should always call this method.
 			 */
 			virtual void Apply() = 0;
-			
-			/**
-			 * @brief This method is called when the settings (just the values; e.g. in a configuration file) are requested
-			 * to be reset, i.e. you have to apply the setting's default values.
-			 *
-			 * This method is pure virtual and must be implemented.
-			 */
-			virtual void RestoreDefaults() = 0;
 		
 		private:
 			friend class SettingsDialog;
+			friend class Workbench;
 			
 			const QString title;
-			// For browsing the settings without dialog
-			QWidget* virtual_ui;
+			QWidget* content_widget;
+			
+			// Creates an action to open this page
+			void ConstructNavigationAction(ActionProvider* provider, Workbench* window);
 	};
 }
 

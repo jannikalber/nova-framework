@@ -5,16 +5,15 @@
 
 #include "progress.h"
 
-#include <QtCore/QMetaObject>
-#include <QtWidgets/QApplication>
+#include <QApplication>
 
 #include "notification.h"
 
 namespace nova {
 	Task::Task(ProgressMonitor* monitor, const QString& task_name, bool is_indeterminate,
-	           const std::function<StatusCode(Task*)>& lambda, bool needs_event_queue)
-			: QThread(), task_name(task_name), indeterminate(is_indeterminate), lambda(lambda),
-			  needs_event_queue(needs_event_queue), value(0) {
+	           const TaskLambda& lambda, bool needs_event_queue):
+			QThread(), task_name(task_name), lambda(lambda), indeterminate(is_indeterminate),
+			needs_event_queue(needs_event_queue), value(0) {
 		connect(this, &Task::finished, this, &Task::deleteLater);
 		// Run the following lambdas on the main thread
 		connect(this, &Task::started, qApp, [this, monitor] { monitor->Enable(this); });
@@ -30,16 +29,12 @@ namespace nova {
 		emit updated();
 	}
 	
-	StatusCode Task::Run() {
+	TaskResult Task::Run() {
 		return lambda(this);
 	}
 	
-	void Task::RunOnMainThread(const std::function<void()>& lambda) {
-		QMetaObject::invokeMethod(qApp, lambda);
-	}
-	
 	void Task::run() {
-		const StatusCode status_code = Run();
+		const TaskResult status_code = Run();
 		if (!status_code.first) emit errorOccurred(status_code.second);
 		
 		emit disabled();
@@ -48,11 +43,11 @@ namespace nova {
 		if (needs_event_queue) exec();
 	}
 	
-	ProgressMonitor::ProgressMonitor(Notifier* notifier) : tasks(QList<Task*>()), notifier(notifier) {
-	}
+	ProgressMonitor::ProgressMonitor(Notifier* notifier):
+			notifier(notifier) {}
 	
 	Task* ProgressMonitor::get_current_task() const {
-		return tasks.isEmpty() ? nullptr : tasks.at(0);
+		return tasks.isEmpty() ? nullptr : tasks[0];
 	}
 	
 	void ProgressMonitor::Enable(Task* task) {
@@ -71,8 +66,9 @@ namespace nova {
 			notification->Show();
 		}
 	}
+	
 	void ProgressMonitor::UpdateTasks() {
 		if (tasks.isEmpty()) UpdateProgressView(false, nullptr);
-		else UpdateProgressView(true, tasks.at(0));
+		else UpdateProgressView(true, tasks[0]);
 	}
 }

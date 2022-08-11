@@ -5,29 +5,30 @@
 
 #include "searchbar.h"
 
-#include <QtCore/Qt>
-#include <QtCore/QString>
-#include <QtCore/QRegExp>
-#include <QtGui/QIcon>
-#include <QtGui/QBrush>
-#include <QtGui/QKeySequence>
-#include <QtGui/QKeyEvent>
-#include <QtWidgets/QApplication>
-#include <QtWidgets/QWidget>
-#include <QtWidgets/QVBoxLayout>
-#include <QtWidgets/QLineEdit>
-#include <QtWidgets/QTreeWidget>
-#include <QtWidgets/QTreeWidgetItem>
-#include <QtWidgets/QHeaderView>
+#include <Qt>
+#include <QString>
+#include <QRegExp>
+#include <QIcon>
+#include <QBrush>
+#include <QKeySequence>
+#include <QKeyEvent>
+#include <QApplication>
+#include <QWidget>
+#include <QVBoxLayout>
+#include <QLineEdit>
+#include <QTreeWidget>
+#include <QTreeWidgetItem>
+#include <QHeaderView>
 #include <QMessageBox>
 
 #include "workbench.h"
 #include "actionprovider.h"
 
+#define NOVA_CONTEXT "nova/searchbar"
+
 namespace nova {
-	SearchBar::SearchBar(Workbench* window) : QuickDialog(window), action_results(QList<QAction*>()) {
-		set_title(QApplication::translate("nova/searchbar", "Search..."));
-		
+	SearchBar::SearchBar(Workbench* window) :
+			QuickDialog(window, NOVA_TR("Search...")) {
 		auto* widget = new QWidget(this);
 		auto* layout = new QVBoxLayout(widget);
 		layout->setContentsMargins(0, 0, 0, 0);
@@ -37,8 +38,8 @@ namespace nova {
 		results = new QTreeWidget(widget);
 		
 		search_bar->setMinimumWidth(350);
-		search_bar->setPlaceholderText(QApplication::translate("nova/searchbar", "Browse the application"));
-		search_bar->setToolTip(QApplication::translate("nova/searchbar", "<b>Note:</b> Wildcard syntax available"));
+		search_bar->setPlaceholderText(NOVA_TR("Browse the application"));
+		search_bar->setToolTip(NOVA_TR("<b>Note:</b> Wildcard syntax available"));
 		
 		results->setMouseTracking(true);
 		results->setFocusProxy(search_bar);
@@ -51,7 +52,7 @@ namespace nova {
 		layout->addWidget(search_bar);
 		layout->addWidget(results);
 		
-		set_input_widget(widget);
+		set_content_widget(widget);
 		search_bar->setFocus();
 		
 		connect(search_bar, &QLineEdit::textEdited, this, &SearchBar::suggest);
@@ -90,7 +91,6 @@ namespace nova {
 		}
 	}
 	
-	// Signals and slots
 	void SearchBar::suggest() {
 		if (!search_bar->text().isEmpty()) {
 			results->show();
@@ -100,9 +100,9 @@ namespace nova {
 			
 			const QRegExp reg_exp(search_bar->text(), Qt::CaseInsensitive, QRegExp::WildcardUnix);
 			
-			for (ActionProvider* i : dynamic_cast<Workbench*>(parent())->providers) {
-				for (QAction* j : i->ListActions()) {
-					if (!j->toolTip().contains(reg_exp)) continue;
+			for (const ActionProvider* i: dynamic_cast<const Workbench*>(parent())->providers) {
+				for (QAction* j: i->ListActions()) {
+					if (!j->isVisible() || (reg_exp.indexIn(j->toolTip()) == -1)) continue;
 					action_results << j;
 					
 					auto* item = new QTreeWidgetItem(results);
@@ -111,8 +111,8 @@ namespace nova {
 					                 (j->shortcut().isEmpty() ? "" : " (" + j->shortcut().toString() + ")"));
 					item->setText(1, i->get_title());
 					item->setToolTip(0, j->whatsThis());
-					item->setFlags(Qt::ItemIsEnabled |
-					               Qt::ItemIsSelectable);  // Don't allow the user to check items (see trigger())
+					// Don't allow the user to check items (see trigger()) (no Qt::ItemIsUserCheckable)
+					item->setFlags(j->isEnabled() ? Qt::ItemIsEnabled | Qt::ItemIsSelectable : Qt::NoItemFlags);
 					
 					item->setTextAlignment(1, Qt::AlignTrailing | Qt::AlignVCenter);  // Right aligned
 					QFont font;
@@ -127,7 +127,7 @@ namespace nova {
 			// If nothing is found
 			if (action_results.isEmpty()) {
 				auto* item = new QTreeWidgetItem(results);
-				item->setText(0, QApplication::translate("nova/searchbar", "Nothing found"));
+				item->setText(0, NOVA_TR("Nothing found"));
 				item->setFlags(Qt::ItemIsEnabled);
 				item->setForeground(0, QBrush(Qt::gray));
 			}
@@ -140,7 +140,8 @@ namespace nova {
 	void SearchBar::trigger(QTreeWidgetItem* item) {
 		if (action_results.isEmpty()) return;
 		
-		QAction* action = action_results.at(results->indexOfTopLevelItem(item));
+		QAction* action = action_results[results->indexOfTopLevelItem(item)];
+		if (!action->isEnabled()) return;
 		
 		if (!action->isCheckable()) {
 			accept();

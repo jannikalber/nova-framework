@@ -88,11 +88,7 @@
 					</item>
 					
 					<item>
-						<widget class="QLabel" name="lblNotificationLinks">
-							<property name="text">
-								<string>[&lt;a href="close"&gt;Close&lt;/a&gt; | &lt;a href="close"&gt;Fix&lt;/a&gt;]</string>
-							</property>
-						</widget>
+						<widget class="QLabel" name="lblNotificationLinks" />
 					</item>
 				</layout>
 			</widget>

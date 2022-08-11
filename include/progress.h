@@ -8,67 +8,84 @@
 
 #include <functional>
 
-#include <QtCore/QtGlobal>
-#include <QtCore/QObject>
-#include <QtCore/QThread>
-#include <QtCore/QPair>
-#include <QtCore/QList>
-#include <QtCore/QString>
+#include <QObject>
+#include <QThread>
+#include <QPair>
+#include <QList>
+#include <QString>
 
 #include "nova.h"
 
 namespace nova {
+	class Task;
 	class Notifier;
 	class ProgressMonitor;
-	
+}
+
+namespace nova {
 	/**
-	 * @brief Describes if a Task succeeded or not.
+	 * @brief Describes if a nova::Task succeeded or not.
 	 *
 	 * The typedef is translated to QPair<bool, QString>.
 	 *
 	 * Possible values:
-	 * - (true, nullptr): the task succeeded
-	 * - (false, error message): the task failed, the errorOccurred message is shown in the workbench
+	 * <ul>
+	 *  <li>(true, nullptr): the task succeeded</li>
+	 *  <li>(false, error message): the task failed, the error message is shown in the workbench</li>
+	 * </ul>
 	 *
-	 * @sa Task
+	 * @sa nova::Task
 	 */
-	typedef QPair<bool, QString> StatusCode;
+	typedef QPair<bool, QString> TaskResult;
 	
 	/**
-	 * @brief A task is bound to a thread which can be shown in ProgressMonitor objects.
+	 * @brief Specifies the lambda which is run when a nova::Task is executed.
+	 *
+	 * The typedef is translated to std::function<nova::TaskResult(nova::Task* task)>.
+	 *
+	 * The function parameter 'task' is the task the lambda belongs to. It returns a nova::TaskResult object.
+	 *
+	 * @sa nova::TaskResult
+	 */
+	typedef std::function<TaskResult(Task* task)> TaskLambda;
+	
+	/**
+	 * @brief A nova::Task is bound to a thread whose progress can be shown in nova::ProgressMonitor objects.
 	 * @headerfile progress.h <nova/progress.h>
 	 *
 	 * The task consists of two phases:
 	 *
-	 * The first phase is the task itself which is represented in ProgressMonitor objects (i.e. which can have a
-	 * percentage value).
+	 * The first phase is the task itself whose progress is monitored.
 	 *
 	 * The task isn't destroyed, when the first phase ends: It's still possible to receive some events. This phase
-	 * isn't shown in monitors anymore and can be terminated by calling quit().
+	 * is the second one and it isn't shown in monitors anymore. The phase can be terminated by calling quit().
 	 *
-	 * @sa ProgressMonitor
+	 * @sa Nova::ProgressMonitor
 	 */
 	class NOVA_API Task : public QThread {
 		Q_OBJECT
 		
 		public:
 			/**
-			 * Constructs a new task.
+			 * @brief Creates a new nova::Task.
 			 *
-			 * The task isn't started. Call start().
+			 * The task has to be started manually by calling start().
 			 *
-			 * Note: The task gets automatically deleted, when it finished.
+			 * The task gets automatically deleted when it finished.
 			 *
 			 * @param monitor The monitor in which the task is shown
-			 * @param task_name is a short description being represented in the monitor
-			 * @param is_indeterminate If this property is true, the task has no percentage value (optional, default: true).
-			 * @param lambda This can be a lambda which is executed in the first phase. It's parameter is the task
-			 * itself for changing the percentage value. It must return a StatusCode (optional: please override Run() instead).
+			 * @param task_name A short description of the task (e.g. "Connecting")
+			 * @param is_indeterminate If this property is true, the task has no percentage value and a busy progress bar is
+			 * shown instead (optional, default: true).
+			 * @param lambda This can be a lambda which is executed when the task starts. It's parameter is the task
+			 * itself for changing the percentage value. It must return a nova::TaskResult object. (optional: You can
+			 * reimplement Run() instead).
 			 * @param needs_event_queue If this flag is set, the task does start an event queue for signals and slots to work.
-			 * Please make sure to use quit() to terminate the queue.
+			 * Please make sure to use quit() to terminate the queue. The second phase of the description above only exists if this
+			 * flag is set.
 			 */
 			Task(ProgressMonitor* monitor, const QString& task_name, bool is_indeterminate = true,
-			     const std::function<StatusCode(Task*)>& lambda = nullptr, bool needs_event_queue = false);
+			     const TaskLambda& lambda = nullptr, bool needs_event_queue = false);
 			
 			/**
 			 * @brief Returns the task's name.
@@ -76,93 +93,78 @@ namespace nova {
 			inline QString get_task_name() const { return task_name; }
 			
 			/**
-			 * @brief Returns true if the task is indeterminate (i.e. has no percentage value)
+			 * @brief Returns true when the task is indeterminate.
 			 */
 			inline bool is_indeterminate() const { return indeterminate; }
 			
 			/**
 			 * @brief Updates the percentage value of non-indeterminate tasks.
 			 *
-			 * Indeterminate tasks can also have a percentage value which is never shown.
+			 * Indeterminate tasks internally also have a percentage value
+			 * being ignored by progress monitors.
 			 *
 			 * @param value is the percentage value between 0 and 100
-			 * @sa get_value()
 			 */
 			void set_value(int value);
 			
 			/**
 			 * @brief Returns the percentage value of non-indeterminate tasks.
-			 * @sa set_value()
 			 */
 			inline int get_value() const { return value; }
 		
 		protected:
 			/**
-			 * @brief If you inherit Task, please override Run().
+			 * @brief If you inherit nova::Task, please reimplement Run().
 			 *
-			 * This is the same as having a lambda set. The lambda is just called in the method.
+			 * This is the same as having a lambda set. The lambda is just called in the default implementation.
 			 *
 			 * Because of this, please do not call the overridden method, if you
-			 * override Run(). This can result in undefined behaviour.
+			 * reimplement Run(). This can result in undefined behavior.
 			 *
-			 * @return A StatusCode which contains information if the task succeeded or not.
+			 * @return A nova::TaskResult object which contains information about whether the task succeeded or not.
 			 * @sa Task() (see parameter lambda)
 			 */
-			virtual StatusCode Run();
+			virtual TaskResult Run();
 			
 			/**
-			 * @brief Runs a lambda on the QApplication's thread.
-			 *
-			 * Every Task lives in an own thread. Some tasks like updating the user interface require to be
-			 * executed in the main thread. The updates can be packed in a lambda and finally be run by this method.
-			 *
-			 * @param lambda The lambda to be run
-			 */
-			void RunOnMainThread(const std::function<void()>& lambda);
-			
-			/**
-			 * Reimplements QThread::run()
+			 * This method is internally required and should not be called.
 			 */
 			void run() override;
 		
 		private:
 			const QString task_name;
-			const std::function<StatusCode(Task*)> lambda;
+			const TaskLambda lambda;
 			const bool indeterminate;
+			int value;
 			
 			const bool needs_event_queue;
-			
-			int value;
 		
 		signals:
-			/// @cond
+			//! @cond
 			void errorOccurred(const QString&);
 			void disabled();
 			void updated();
-			/// @endcond
+			//! @endcond
 	};
 	
 	/**
-	 * @brief A progress monitor is an abstract class which can display Task objects.
+	 * @brief A nova::ProgressMonitor is an abstract class which can display nova::Task objects.
 	 * @headerfile progress.h <nova/progress.h>
 	 *
 	 * It often contains a progress bar and a label with the task's name.
 	 *
-	 * The workbench's progress monitor shows the hint "Ready" in the status bar, if there's no active task
-	 * (context: "nova/progress").
+	 * nova::Workbench is an important nova::ProgressMonitor.
+	 *
+	 * The workbench's progress monitor shows the hint "Ready" in the status bar if there's no active task
+	 * (translation context: "nova/workbench").
 	 *
 	 * This class must be derived.
 	 *
-	 * @sa Task
+	 * @sa nova::Task
 	 */
 	class NOVA_API ProgressMonitor {
 		public:
-			/**
-			 * Constructs a new progress monitor.
-			 *
-			 * @param notifier If a task fails, the error message is sent to this notifier (optional, default: none).
-			 */
-			explicit ProgressMonitor(Notifier* notifier = nullptr);
+			NOVA_DISABLE_COPY(ProgressMonitor)
 			virtual ~ProgressMonitor() noexcept = default;
 			
 			/**
@@ -172,17 +174,24 @@ namespace nova {
 		
 		protected:
 			/**
-			 * @brief This method is called when the view must be updated.
+			 * @brief Creates a new nova::ProgressMonitor.
+			 *
+			 * @param notifier If a task fails, an error message is sent to this notifier (optional, default: none).
+			 */
+			explicit ProgressMonitor(Notifier* notifier = nullptr);
+			
+			/**
+			 * @brief This pure virtual method is called when the monitor's view must be updated.
 			 *
 			 * @param is_active is false if there's no task to be displayed (i.e. the view has to be cleared)
 			 * @param task The task to be displayed
 			 */
-			virtual void UpdateProgressView(bool is_active, Task* task) = 0;
+			virtual void UpdateProgressView(bool is_active, const Task* task) = 0;
 		
 		private:
 			friend class Task;
 			
-			Notifier* notifier;
+			Notifier* const notifier;
 			QList<Task*> tasks;
 			
 			void Enable(Task* task);
@@ -192,4 +201,4 @@ namespace nova {
 	};
 }
 
-#endif  // NOVA_FRAMEWORK_PR
+#endif  // NOVA_FRAMEWORK_PROGRESS_H

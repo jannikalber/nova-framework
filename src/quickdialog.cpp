@@ -5,21 +5,22 @@
 
 #include "quickdialog.h"
 
-#include <QtCore/Qt>
-#include <QtCore/QObject>
-#include <QtCore/QStringList>
-#include <QtCore/QString>
-#include <QtGui/QIcon>
-#include <QtGui/QKeyEvent>
-#include <QtWidgets/QListWidget>
-#include <QtWidgets/QListWidgetItem>
-#include <QtWidgets/QDockWidget>
+#include <Qt>
+#include <QObject>
+#include <QString>
+#include <QSize>
+#include <QRect>
+#include <QIcon>
+#include <QKeyEvent>
+#include <QListWidget>
+#include <QListWidgetItem>
+#include <QDockWidget>
 
 #include "ui_quickdialog.h"
 
 namespace nova {
-	QuickDialog::QuickDialog(QWidget* parent, const QString& title)
-			: QDialog(parent), ui(new Ui::QuickDialog()), input_widget(nullptr) {
+	QuickDialog::QuickDialog(QWidget* parent, const QString& title):
+			QDialog(parent), ui(new Ui::QuickDialog()), content_widget(nullptr) {
 		ui->setupUi(this);
 		set_title(title);
 	}
@@ -31,25 +32,8 @@ namespace nova {
 		delete ui;
 	}
 	
-	void QuickDialog::keyPressEvent(QKeyEvent* event) {
-		if (event->key() == Qt::Key_Return) accept();
-		QDialog::keyPressEvent(event);
-	}
-	
-	void QuickDialog::set_title(const QString& title) {
-		this->title = title;
-		ui->dcwTitle->setWindowTitle(title);
-	}
-	
-	void QuickDialog::set_input_widget(QWidget* input_widget) {
-		this->input_widget = input_widget;
-		ui->dcwTitle->setWidget(input_widget);
-		
-		input_widget->setFocus();
-	}
-	
 	QString QuickDialog::InputText(QWidget* parent, const QString& title, const QString& placeholder,
-	                               QLineEdit::EchoMode mode, const QString& default_text) {
+	                               QLineEdit::EchoMode mode, const QString& default_text, bool under_cursor) {
 		QuickDialog dialog(parent, title);
 		
 		QLineEdit line_edit(&dialog);
@@ -57,31 +41,38 @@ namespace nova {
 		line_edit.setPlaceholderText(placeholder);
 		line_edit.setEchoMode(mode);
 		line_edit.setText(default_text);
-		dialog.set_input_widget(&line_edit);
+		line_edit.selectAll();
+		dialog.set_content_widget(&line_edit);
+		
+		if (under_cursor) dialog.PositionAt(QCursor::pos());
 		
 		if (dialog.exec() == QDialog::Accepted) return line_edit.text();
-		else return "";
+        else return QString();
 	}
 	
-	QString QuickDialog::InputItem(QWidget* parent, const QString& title, const QStringList& items,
-	                               const QList<QIcon>& icons) {
+	int QuickDialog::InputItemIndex(QWidget* parent, const QString& title, const QStringList& items,
+	                                const QList<QIcon>& icons, int current_index, bool under_cursor) {
 		QuickDialog dialog(parent, title);
 		
 		QListWidget list_widget(&dialog);
 		for (const QString& i : items) {
 			list_widget.addItem(i);
 		}
-		for (int i = 0; i < icons.length(); ++i) {
+		for (int i = 0 ; i < icons.length() ; ++i) {
 			QListWidgetItem* item = list_widget.item(i);
-			if (item != nullptr) item->setIcon(icons.at(i));
+			if (item != nullptr) item->setIcon(icons[i]);
 		}
 		
-		dialog.set_input_widget(&list_widget);
+		dialog.set_content_widget(&list_widget);
 		// Make the dialog as small as possible
 		list_widget.setMinimumWidth(150);
+		list_widget.setIconSize(QSize(16, 16));
 		list_widget.setMaximumSize(list_widget.sizeHintForColumn(0) + 2 * list_widget.frameWidth(),
-		                         list_widget.sizeHintForRow(0) * list_widget.count() + 2 * list_widget.frameWidth());
-		list_widget.setCurrentRow(0);
+		                           list_widget.sizeHintForRow(0) * list_widget.count() + 2 * list_widget.frameWidth());
+		list_widget.setMinimumHeight(list_widget.maximumHeight());
+		list_widget.setCurrentRow(current_index);
+		
+		if (under_cursor) dialog.PositionAt(QCursor::pos());
 		
 		QObject::connect(&list_widget, &QListWidget::itemClicked, &dialog, &QuickDialog::accept);
 		
@@ -92,7 +83,64 @@ namespace nova {
 			                 list_widget.setCurrentItem(item);
 		                 });
 		
-		if (dialog.exec() == QDialog::Accepted) return list_widget.currentItem()->text();
-		else return "";
+		if (dialog.exec() == QDialog::Accepted) return list_widget.currentRow();
+		else return -1;
+	}
+	
+	void QuickDialog::PositionAt(const QPoint& point) {
+		// Issues internal size calculation, because the size is not available yet.s
+		layout()->update();
+		layout()->activate();
+		
+		const int width = geometry().width();
+		const int height = geometry().height();
+		
+		int x = point.x();
+		int y = point.y();
+		
+		const int max_x = (parentWidget()->x() + parentWidget()->width() - 10);
+		const int max_y = (parentWidget()->y() + parentWidget()->height() - 10);
+		
+		if ((x + width) >= max_x) {
+			x = (max_x - width);
+		} else {
+			x -= (width / 2);
+			
+			if (x < (parentWidget()->x() + 10)) {
+				x = (parentWidget()->x() + 10);
+			}
+		}
+		
+		if ((y + height) >= max_y) {
+			y = (max_y - height);
+		} else {
+			y -= 10; // 10px = 20px/2 (the dialog's title bar is 20px high)
+			
+			if (y < (parentWidget()->y() + 10)) {
+				y = (parentWidget()->y() + 10);
+			}
+		}
+		
+		move(x, y);
+	}
+	
+	QString QuickDialog::get_title() const {
+		return ui->dcwTitle->windowTitle();
+	}
+	
+	void QuickDialog::set_title(const QString& title) {
+		ui->dcwTitle->setWindowTitle(title);
+	}
+	
+	void QuickDialog::set_content_widget(QWidget* content_widget) {
+		this->content_widget = content_widget;
+		ui->dcwTitle->setWidget(content_widget);
+		
+		content_widget->setFocus();
+	}
+	
+	void QuickDialog::keyPressEvent(QKeyEvent* event) {
+		QDialog::keyPressEvent(event);
+		if (event->key() == Qt::Key_Return) accept();
 	}
 }

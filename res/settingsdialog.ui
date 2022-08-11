@@ -1,3 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Copyright (c) 2021 by Jannik Alber.
+  All rights reserved.
+  -->
+
 <ui version="4.0" connectslotsbyname="false">
 	<class>SettingsDialog</class>
 	
@@ -55,7 +62,25 @@
 						</layout>
 					</widget>
 					
-					<widget class="QStackedWidget" name="stwPages" />
+					<widget class="QWidget">
+						<property name="sizePolicy">
+							<sizepolicy hsizetype="Expanding" vsizetype="Preferred" />
+						</property>
+						
+						<layout class="QVBoxLayout">
+							<item>
+								<widget class="QStackedWidget" name="stwTitles">
+									<property name="sizePolicy">
+										<sizepolicy hsizetype="Preferred" vsizetype="Fixed" />
+									</property>
+								</widget>
+							</item>
+							
+							<item>
+								<widget class="QStackedWidget" name="stwPages" />
+							</item>
+						</layout>
+					</widget>
 				</widget>
 			</item>
 			
@@ -79,6 +104,13 @@
 	</widget>
 	
 	<connections>
+		<connection>
+			<sender>lswNavigation</sender>
+			<signal>currentRowChanged(int)</signal>
+			<receiver>stwTitles</receiver>
+			<slot>setCurrentIndex(int)</slot>
+		</connection>
+		
 		<connection>
 			<sender>lswNavigation</sender>
 			<signal>currentRowChanged(int)</signal>

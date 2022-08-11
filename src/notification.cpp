@@ -5,19 +5,21 @@
 
 #include "notification.h"
 
-#include <QtCore/QStringList>
-#include <QtGui/QIcon>
-#include <QtWidgets/QStyle>
-#include <QtWidgets/QApplication>
+#include <QStringList>
+#include <QIcon>
+#include <QStyle>
+#include <QApplication>
+
+#define NOVA_CONTEXT "nova/notification"
 
 namespace nova {
 	Notification::Notification(Notifier* notifier, const QString& title, const QString& message,
-	                           NotificationType type, bool high_priority, const ActionList& actions)
-			: notifier(notifier), title(title), message(message), type(type),
-			  high_priority(high_priority), actions(actions) {
-		this->actions[QApplication::translate("nova/notification", "Close")] = [](Notification* notification) {
+	                           NotificationType type, bool high_priority, const ActionList& actions):
+			notifier(notifier), title(title), message(message), type(type),
+			high_priority(high_priority), actions(actions) {
+		this->actions.insert(NOVA_TR("Close"), [](Notification* notification) {
 			notification->Close();
-		};
+		});
 	}
 	
 	QIcon Notification::ConvertToIcon(Notification::NotificationType type) {
@@ -38,7 +40,7 @@ namespace nova {
 		return QApplication::style()->standardIcon(pixmap);
 	}
 	
-	QString Notification::CreateLinksLabelText() {
+	QString Notification::CreateLinksLabelText() const {
 		QStringList links;
 		
 		for (const QString& i : actions.keys()) {
@@ -49,7 +51,7 @@ namespace nova {
 	}
 	
 	void Notification::ActivateAction(const QString& action) {
-		if (actions.contains("Close")) {
+		if (actions.contains(action)) {
 			actions[action](this);
 		}
 	}
@@ -77,7 +79,7 @@ namespace nova {
 		}
 	}
 	
-	void Notifier::ActivateNotificationAction(const QString& action) {
+	void Notifier::ActivateNotificationAction(const QString& action) const {
 		if (current_notification != nullptr) {
 			current_notification->ActivateAction(action);
 		}

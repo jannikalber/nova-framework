@@ -6,88 +6,108 @@
 #ifndef NOVA_FRAMEWORK_TOOLWINDOW_H
 #define NOVA_FRAMEWORK_TOOLWINDOW_H
 
-#include <QtCore/QtGlobal>
-#include <QtCore/Qt>
-#include <QtWidgets/QDockWidget>
+#include <Qt>
+#include <QDockWidget>
 
 #include "nova.h"
 #include "actionprovider.h"
 
-QT_USE_NAMESPACE
-QT_BEGIN_NAMESPACE
 class QWidget;
+class QAction;
 class QMainWindow;
 class QToolBar;
-QT_END_NAMESPACE
+
+namespace nova { class Workbench; }
 
 namespace nova {
 	/**
-	 * @brief A tool window is a small window which sits in the workbench's border (QDockWidget).
+	 * @brief A nova::ToolWindow is a small window which sits in the workbench's docking area (QDockWidget).
 	 * @headerfile toolwindow.h <nova/toolwindow.h>
 	 *
-	 * Tool windows take a special role in this library: Often, plugins extend an application by providing their
-	 * tool windows.
-	 *
-	 * Tool windows can have a tool bar (that isn't possible in Qt) and therefore can contain actions. So, a tool window
-	 * is an ActionProvider.
+	 * Tool windows can have a tool bar with actions. Therefore, a tool window is a nova::ActionProvider.
 	 *
 	 * There are two types of tool windows: the vertical (left and right areas) and the horizontal (top and bottom areas)
 	 * ones.
 	 *
-	 * This class should be derived.
+	 * Your subclass must have a constructor with QWidget* as parameter (the parent window).
+	 * Call nova::Workbench::RegisterToolWindow<YourSubclass>() to register the tool window class.
+	 *
+	 * This class must be derived.
 	 */
 	class NOVA_API ToolWindow : public QDockWidget, public ActionProvider {
 		public:
-			/**
-			 * Creates a new tool window.
-			 *
-			 * Use set_content_widget() for changing the window's content.
-			 *
-			 * Your subclass must have a constructor with QWidget* as parameter (the parent window).
-			 * Call Workbench::RegisterToolWindow<YourSubclass>() to register the tool window class.
-			 *
-			 * @param parent The parent window
-			 * @param title The tool window's title
-			 * @param orientation if the tool window is a vertical or a horizontal one.
-			 * @param needs_tool_bar if a tool bar should also be created and shown (optional, default: false).
-			 * @param default_layout The tool window's initial position or Qt::NoDockWidgetArea if it should be hidden
-			 * by default. (optional, hidden)
-			 *
-			 * @sa set_content_widget()
-			 * @sa Workbench::RegisterToolWindow()
-			 */
-			ToolWindow(QWidget* parent, const QString& title, Qt::Orientation orientation,
-			           bool needs_tool_bar = false, Qt::DockWidgetArea default_layout = Qt::NoDockWidgetArea);
-			virtual ~ToolWindow() noexcept;
+			NOVA_DISABLE_COPY(ToolWindow)
+			virtual ~ToolWindow() noexcept = default;
 			
 			/**
 			 * @brief Returns the tool window's content widget.
 			 */
 			QWidget* get_content_widget() const;
+			
+			/**
+			 * @brief Returns the tool window's orientation.
+			 */
+			inline Qt::Orientation get_orientation() const { return orientation; }
+			
+			/**
+			 * @brief Tool windows don't allow changeable titles.
+			 *
+			 * This method is internally required and should not be called.
+			 */
+			inline void set_title(const QString&) override {}
 		
 		protected:
 			/**
-			 * @brief Manipulates the tool window's content widget.
+			 * @brief Creates a new nova::ToolWindow.
 			 *
-			 * Call this method in the constructor of your window to add functionality.
+			 * Use set_content_widget() to change the window's content.
+			 *
+			 * @param parent The parent window
+			 * @param title The tool window's title
+			 * @param orientation if the tool window is a vertical or a horizontal one
+			 * @param needs_tool_bar if a tool bar should also be created and shown (optional, default: false)
+			 * @param default_layout The tool window's initial position or Qt::NoDockWidgetArea if it should be hidden
+			 * by default. (optional, default: hidden)
+			 *
+			 * @sa set_content_widget()
+			 * @sa nova::Workbench::RegisterToolWindow()
 			 */
-			void set_content_widget(QWidget* widget);
+			ToolWindow(QWidget* parent, const QString& title, Qt::Orientation orientation,
+			           bool needs_tool_bar = false, Qt::DockWidgetArea default_layout = Qt::NoDockWidgetArea);
 			
 			/**
-			 * @brief Adds actions to the tool bar. (Reimplements ActionProvider::ShowAction())
+			 * @brief Sets the tool window's content widget.
 			 *
-			 * This only works for important actions and if a tool bar exists.
+			 * Call this method in the constructor of your window to add functionality.
+			 * The method takes ownership of the pointer and deletes it at appropriate time.
+			 *
+			 * @param content_widget The widget to be set
 			 */
-			void ShowAction(QAction* action, bool separate = false, bool is_important = true) override;
+			void set_content_widget(QWidget* content_widget);
+			
+			/**
+			 * This method is internally required and should not be called.
+			 */
+			void DisplayAction(QAction* action, int index, bool, int) override;
+			
+			/**
+			 * This method is internally required and should not be called.
+			 */
+			void DisplaySeparators(bool show_regular, int index_regular, bool, int) override;
 		
 		private:
 			friend class Workbench;
 			
-			QMainWindow* nested_main_window;
-			QToolBar* tool_bar;
+			QMainWindow* const nested_main_window;
+			QToolBar* const tool_bar;
 			
 			Qt::DockWidgetArea default_layout;
 			const bool default_hidden;
+			const Qt::Orientation orientation;
+			// For Workbench::RestoreLayout(); it holds the width (vertical ones) or height (horizontal ones) of the tool window
+			int initial_size;
+			
+			void ConstructNavigationAction(ActionProvider* provider);
 	};
 }
 

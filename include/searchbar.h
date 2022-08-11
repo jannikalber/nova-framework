@@ -6,54 +6,51 @@
 #ifndef NOVA_FRAMEWORK_SEARCHBAR_H
 #define NOVA_FRAMEWORK_SEARCHBAR_H
 
-#include <QtCore/QtGlobal>
-#include <QtCore/QObject>
-#include <QtCore/QList>
+#include <QObject>
+#include <QList>
 
 #include "nova.h"
 #include "quickdialog.h"
 
-QT_BEGIN_NAMESPACE
-QT_USE_NAMESPACE
 class QAction;
 class QKeyEvent;
 class QLineEdit;
 class QTreeWidget;
 class QTreeWidgetItem;
-QT_END_NAMESPACE
+
+namespace nova { class Workbench; }
 
 namespace nova {
-	class Workbench;
-	
 	/**
-	 * @brief Represents the dialog which is used to browse the application's content.
+	 * @brief A dialog which can be used to browse the application's content.
 	 * @headerfile searchbar.h <nova/searchbar.h>
 	 *
-	 * The dialog is a line edit which proposes matching actions from all ActionProvider subtypes having the workbench as parent.
-	 * The results can be invoked immediately by keyboard. These results being checkable contain a check box to change their state.
+	 * The dialog consists of a line edit which proposes matching actions from all nova::ActionProvider subtypes being registered.
+	 * The results can be immediately invoked by keyboard. Checkable results contain a check box to change their state.
 	 *
 	 * The translations belong to the context "nova/searchbar".
 	 *
-	 * @sa ActionProvider
+	 * @sa nova::ActionProvider
 	 */
 	class NOVA_API SearchBar : public QuickDialog {
 		Q_OBJECT
 		
 		public:
 			/**
-			 * Creates a new search bar.
+			 * @brief Creates a new search bar dialog.
 			 *
 			 * Use exec() to run it.
 			 *
 			 * @param window The workbench whose actions can be found (optional, default: nova::workbench)
 			 */
 			explicit SearchBar(Workbench* window = workbench);
+			NOVA_DISABLE_COPY(SearchBar)
 		
 		protected:
 			/**
-			 * Reimplements QWidget::keyPressEvent()
+			 * This method is internally required and should not be called.
 			 */
-			void keyPressEvent(QKeyEvent* event);
+			void keyPressEvent(QKeyEvent* event) override;
 		
 		private:
 			QLineEdit* search_bar;

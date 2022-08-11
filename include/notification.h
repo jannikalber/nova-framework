@@ -8,40 +8,36 @@
 
 #include <functional>
 
-#include <QtCore/QtGlobal>
-#include <QtCore/QString>
-#include <QtCore/QMap>
+#include <QString>
+#include <QMap>
 
 #include "nova.h"
 
-QT_BEGIN_NAMESPACE
-QT_USE_NAMESPACE
 class QIcon;
-QT_END_NAMESPACE
 
 namespace nova {
 	class Notifier;
 	class Notification;
-	
+}
+
+namespace nova {
 	/**
-	 * @brief An action list is a Notification's map (name; lambda) containing every action's name and the
-	 * lambda to be run when the action is triggered.
+	 * @brief nova::ActionList specifies nova::Notification's actions. It is a map (name; lambda) containing every
+	 * action's name and the lambda to be run when the action is triggered.
 	 *
-	 * The typedef is translated to QMap<QString, std::function<void(Notification*)>>.
+	 * The typedef is translated to QMap<QString, std::function<void(nova::Notification* triggered_notification)>>.
 	 *
-	 * The lambdas have the notification itself as argument.
+	 * The function argument 'notification' is the notification itself.
 	 *
-	 * @sa Notification
+	 * @sa nova::Notification
 	 */
-	typedef QMap<QString, std::function<void(Notification*)>> ActionList;
+	typedef QMap<QString, std::function<void(Notification* notification)>> ActionList;
 	
 	/**
-	 * @brief A Notification consists of a message and a title and is used to inform the user about the application's state.
+	 * @brief A notification consists of a message and a title and is used to inform the user about the application's state.
 	 * @headerfile notification.h <nova/notification.h>
 	 *
-	 * Notifications are shown by Notifier objects.
-	 *
-	 * A notification can contain some actions which allows the user to react directly.
+	 * Notifications are shown by nova::Notifier objects.
 	 *
 	 * All translations belong to the context "nova/notification".
 	 */
@@ -49,25 +45,25 @@ namespace nova {
 		public:
 			/**
 			 * @brief A list of all notification types.
-			 *
-			 * There are three different types:
-			 * - Information (e.g. the task succeeded)
-			 * - Warning (e.g. executing the task may end in undefined behaviour)
-			 * - Error (e.g. the task failed with exit code XXX)
 			 */
 			enum NotificationType {
-				Information, Warning, Error
+				//! Information type (e.g. a task succeeded)
+				Information,
+				//! Warning type (e.g. continuing could cause further issues)
+				Warning,
+				//! Error type (e.g. the task failed with exit code XXX)
+				Error
 			};
 			
 			/**
-			 * Constructs a new notification.
+			 * @brief Creates a new nova::Notification.
 			 *
-			 * Every notification has a "Close" action which mustn't be manually added.
+			 * Every notification has a "Close" action which is added automatically.
 			 *
-			 * Note: The notification is not shown until Show() is called. Make sure that the object's life time is long
-			 * enough. The notification is automatically deleted when closing.
+			 * Note: The notification is not shown until Show() is called. Make sure that the notification's life time is long
+			 * enough. It gets automatically deleted when closing.
 			 *
-			 * @param notifier The Notifier displaying the notification
+			 * @param notifier The nova::Notifier which will display the notification
 			 * @param title The notification's title
 			 * @param message The (detailed) description of the notification
 			 * @param type The notification's type (i.e. Information, Warning, Error) (optional, default: Information)
@@ -81,11 +77,11 @@ namespace nova {
 			             const ActionList& actions = ActionList());
 			
 			/**
-			 * @brief Creates a QIcon for the given Notification::NotificationType.
+			 * @brief Creates a QIcon for the given nova::Notification::NotificationType.
 			 *
-			 * These icons are also used by QMessageBox and are platform dependent.
+			 * The icons are used by QMessageBox and are platform dependent.
 			 *
-			 * @param type Which icon should be created
+			 * @param type The requested type
 			 * @return The icon being created
 			 */
 			static QIcon ConvertToIcon(NotificationType type);
@@ -95,51 +91,52 @@ namespace nova {
 			 *
 			 * The action's name is used for both: the anchor's text and its reference.
 			 *
-			 * Example: **[Action 1 | Action 2]**:
+			 * Example: <b>[Action 1 | Action 2]</b>:
 			 * @code
 			 * [<a href="Action 1">Action 1</a> | <a href="Action 2">Action 2</a>]
 			 * @endcode
 			 *
 			 * Note: ActivateAction() is not called automatically.
 			 *
-			 * @return The label text being created
+			 * @return The HTML string being created
 			 *
 			 * @sa ActivateAction()
 			 */
-			QString CreateLinksLabelText();
+			QString CreateLinksLabelText() const;
 			
 			/**
 			 * @brief Triggers one of the notification's actions.
 			 *
 			 * Triggering an action means to run the lambda associated (nova::ActionList) with it.
+			 * If the action isn't associated, nothing happens.
 			 *
-			 * @param action The action's ID to be activated (the anchor's reference)
+			 * The following line will run the lambda of the action with the name "Action 1":
+			 * @code
+			 * ActivateAction("Action 1");
+			 * @endcode
+			 *
+			 * @param action The name of the action to be activated
 			 *
 			 * @sa CreateLinksLabelText()
 			 */
 			void ActivateAction(const QString& action);
 			
 			/**
-			 * @brief Enables the action, adds it to the Notifier's view and shows a popup.
+			 * @brief Enables the notification and sends it to the associated nova::Notifier.
 			 *
-			 * The notifier's current notification gets updated and the old one is closed.
-			 *
-			 * The notification is shown until Close() is called.
+			 * The notifier's current notification gets updated and the old one is closed automatically.
 			 *
 			 * @sa Close()
-			 * @sa Notifier::get_current_notification()
+			 * @sa nova::Notifier::get_current_notification()
 			 */
 			void Show();
 			
 			/**
-			 * @brief Closes the notification and removes it from the Notifier's view.
+			 * @brief Closes the notification.
 			 *
-			 * The Notifier's current notification gets also updated to nullptr.
-			 *
-			 * The notifications is automatically deleted when calling Close().
+			 * The notification gets automatically deleted.
 			 *
 			 * @sa Show()
-			 * @sa Notifier::get_current_notification()
 			 */
 			void Close();
 			
@@ -156,97 +153,108 @@ namespace nova {
 			/**
 			 * @brief Returns the notification's type.
 			 *
-			 * @sa Notification::NotificationType
+			 * @sa nova::Notification::NotificationType
 			 */
 			NotificationType get_type() const { return type; }
 			
 			/**
-			 * @brief Returns whether the notification has high priority and the Notifier draws extra attention.
+			 * @brief Returns whether the notification has high priority and the nova::Notifier will draw
+			 * extra attention.
 			 */
 			bool is_high_priority() const { return high_priority; }
 		
 		private:
 			friend class Notifier;
 			
-			Notifier* notifier;
+			Notifier* const notifier;
 			const QString title;
 			const QString message;
 			const NotificationType type;
 			const bool high_priority;
 			
-			QMap<QString, std::function<void(Notification*)>> actions;
+			ActionList actions;
 	};
 	
 	/**
-	 * @brief A notifier is an abstract class which can display Notification objects.
+	 * @brief An abstract class which can display Notification objects.
 	 * @headerfile notification.h <nova/notification.h>
 	 *
-	 * Notification are displayed twice:
-	 * - As a popup immediately after its trigger event
-	 * - In a separate view until the notification is closed
+	 * Notifications are displayed twice:
+	 * <ol>
+	 *  <li>As a popup immediately after its trigger event</li>
+	 *  <li>In a separate view until the notification is closed</li>
+	 * </ol>
 	 *
-	 * Both types are implemented in this class.
+	 * nova::Workbench is an important nova::Notifier.
 	 *
 	 * This class must be derived.
 	 *
-	 * @sa Notification
+	 * @sa nova::Notification
+	 * @sa nova::Workbench
 	 */
 	class NOVA_API Notifier {
 		public:
-			/**
-			 * Constructs a new notifier.
-			 */
-			inline Notifier() : current_notification(nullptr) {
-			}
+			NOVA_DISABLE_COPY(Notifier)
 			virtual ~Notifier() noexcept = default;
 			
 			/**
-			 * @brief Shows a notification without creating a Notification object.
+			 * @brief Shows a notification without creating a nova::Notification object.
 			 *
 			 * @param title The notification's title
 			 * @param message The (detailed) description of the notification
 			 * @param type The notification's type (i.e. Information, Warning, Error) (optional, default: Information)
 			 *
-			 * @sa Notification::Notification()
+			 * @sa nova::Notification
 			 */
 			inline void ShowNotification(const QString& title, const QString& message,
 			                             Notification::NotificationType type = Notification::Information) {
-				auto* notification = new Notification(this, title, message, type);
-				notification->Show();
+				(new Notification(this, title, message, type))->Show();
 			}
 			
 			/**
-			 * @brief Returns a pointer to the current Notification being displayed.
+			 * @brief Returns a pointer to the current nova::Notification being displayed.
 			 */
 			inline Notification* get_current_notification() const { return current_notification; }
 		
 		protected:
 			/**
+			 * @brief Creates a new nova::Notifier.
+			 */
+			inline Notifier():
+					current_notification(nullptr) {}
+			
+			/**
 			 * @brief Triggers an action of the current notification.
 			 *
-			 * @param action The action's ID to be activated
+			 * The following line will trigger the action with the name "Action 1" of the current
+			 * notification:
+			 * @code
+			 * ActivateAction("Action 1");
+			 * @endcode
 			 *
-			 * @sa Notification::ActivateAction()
+			 * @param action The name of the action to be activated
+			 *
+			 * @sa nova::Notification::ActivateAction()
 			 * @sa get_current_notification()
 			 */
-			void ActivateNotificationAction(const QString& action);
+			void ActivateNotificationAction(const QString& action) const;
 			
 			/**
-			 * @brief This method is called when the view must be updated.
+			 * @brief This pure virtual method is called when the notification view must be updated.
 			 *
-			 * @param is_active is false if there's no notification to be displayed (i.e. the view has to be cleared)
+			 * @param is_active is false if there's no active notification to be displayed (i.e. the view has to be cleared)
 			 * @param notification The notification to be displayed
 			 */
-			virtual void UpdateNotificationView(bool is_active, Notification* notification) = 0;
+			virtual void UpdateNotificationView(bool is_active, const Notification* notification) = 0;
 			
 			/**
-			 * @brief This method is called when a popup has to been shown.
+			 * @brief This pure virtual method is called when a popup has to be shown.
 			 *
 			 * This only happens once per notification.
 			 *
-			 * @param notification The notification for which the popup is shown
+			 * @param notification The notification for which the popup has to be shown
 			 */
-			virtual void ShowNotificationPopup(Notification* notification) = 0;
+			virtual void ShowNotificationPopup(const Notification* notification) = 0;
 		
 		private:
 			friend class Notification;

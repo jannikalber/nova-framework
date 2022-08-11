@@ -6,46 +6,52 @@
 #ifndef NOVA_FRAMEWORK_WORKBENCH_H
 #define NOVA_FRAMEWORK_WORKBENCH_H
 
-#include <QtCore/QtGlobal>
-#include <QtCore/QObject>
-#include <QtCore/QList>
-#include <QtWidgets/QMainWindow>
-#include <QtWidgets/QSystemTrayIcon>
+#include <QtGlobal>
+#include <QObject>
+#include <QList>
+#include <QString>
+#include <QMainWindow>
+#include <QSystemTrayIcon>
 
 #include "nova.h"
+#include "actionprovider.h"
 #include "progress.h"
 #include "toolwindow.h"
 #include "notification.h"
 #include "settings.h"
 
-QT_USE_NAMESPACE
-QT_BEGIN_NAMESPACE
-class QString;
 class QWidget;
 class QShowEvent;
+class QKeyEvent;
 class QAction;
-class QWinTaskbarButton;
-class QWinTaskbarProgress;
+
+#ifdef WIN32
+struct ITaskbarList4;
+#endif
 
 namespace Ui { class Workbench; }
-QT_END_NAMESPACE
 
 namespace nova {
-	class ActionProvider;
 	class MenuActionProvider;
 	class SearchBar;
-	
+}
+
+namespace nova {
 	/**
 	 * @brief This class represents the main window of the application.
 	 * @headerfile workbench.h <nova/workbench.h>
 	 *
-	 * The workbench has a prefabricated Ui layout. Its content is a tab widget. One can add content types
-	 * which can be displayed in this widget. The window also contains areas for tool windows, menus and
-	 * a status bar which can be extended too.
+	 * The workbench has a prefabricated Ui layout. Its content is a tab widget. You can add nova::ContentPage
+	 * objects which can be displayed in this widget. The window also contains areas for nova::ToolWindow objects,
+	 * menus and a status bar which can be extended too.
 	 *
-	 * Only one workbench window should be constructed in one application.
+	 * The workbench is a nova::ProgressMonitor and a nova::Notifier too.
 	 *
-	 * This class should be derived.
+	 * Only one workbench window should exist per application.
+	 *
+	 * The translations belong to the context "nova/workbench".
+	 *
+	 * This class must be derived.
 	 *
 	 * @sa nova::workbench
 	 */
@@ -54,177 +60,131 @@ namespace nova {
 		
 		public:
 			/**
-			 * @brief A list of menus needed in nearly every application:
-			 *
-			 * - Menu_File (title: "&File")
-			 * - Menu_Edit (title: "&Edit")
-			 * - Menu_Window (title: "&Window")
-			 * - Menu_Help (title: "&Help")
-			 *
-			 * The translations belong to the context "nova/menu".
+			 * @brief A list of standard menus being available
 			 *
 			 * @sa ConstructMenu(StandardMenu)
 			 */
-			enum StandardMenu {
-				Menu_File, Menu_Edit, Menu_Window, Menu_Help
+			enum StandardMenu {  // Array length below must be up-to-date
+				//! File (title: "&File")
+				Menu_File,
+				//! Edit (title: "&Edit")
+				Menu_Edit,
+				//! Window (title: "&Window")
+				Menu_Window,
+				//! Help (title: "&Help")
+				Menu_Help
 			};
 			
 			/**
-			 * @brief A list of standard actions which are handled by Nova:
-			 *
-			 * - Action_Exit to exit the application [Ctrl+Q] (title: "&Exit")
-			 * - Action_Settings to open the (automatically available) settings dialog [Ctrl+Shift+S] (title: "&Settings")
-			 * - Action_ResetLayout for resetting all tool bars and tool windows to their default position
-			 * (title: "Restore &Default Layout")
-			 * - Action_DirectHelp to enable QWhatsThis [F2] (title: "&Direct Help")
-			 * - Action_SearchBar for browsing the application's actions [F3] (title: "&Search...")
-			 *
-			 * The translations belong to the context "nova/action".
+			 * @brief A list of standard actions being fully implemented
 			 *
 			 * @sa ConstructStandardAction()
 			 */
-			enum StandardAction {
-				Action_Exit, Action_Settings, Action_ResetLayout, Action_DirectHelp, Action_SearchBar
+			enum StandardAction {  // Array length below must be up-to-date
+				Action_Exit,
+				//! "Settings" to open the (automatically available) settings dialog [Ctrl+Shift+S] (title: "&Settings")
+				Action_Settings,
+				//! "Restore Default Layout" for resetting all tool bars and tool windows to their default position
+				Action_RestoreLayout,
+				//! "Direct Help" to enable QWhatsThis [F2] (title: "&Direct Help")
+				Action_DirectHelp,
+				//! "Search Bar" for browsing the application's actions [F3] | [double shift] (title: "&Search...")
+				Action_SearchBar
 			};
 			
-			/**
-			 * Constructs a new workbench. The constructor should only be called once in one application.
-			 * Calling this constructor updates automatically the reference of nova::workbench.
-			 *
-			 * A ProgressMonitor is inserted in the workbench's status bar.
-			 *
-			 * @param parent The parent window which blocks its input until the workbench window is closed (optional, default: none)
-			 * @sa nova::workbench
-			 */
-			explicit Workbench(QWidget* parent = nullptr);
-			Workbench(const Workbench&) = delete;
-			Workbench(Workbench&&) = delete;
-			
-			/**
-			 * Destructs the workbench and also its QObject children.
-			 */
+			NOVA_DISABLE_COPY(Workbench)
 			virtual ~Workbench() noexcept;
 			
 			/**
-			 * @brief Constructs a new menu and displays it in the menu bar.
+			 * @brief Adds a nova::ActionProvider to the workbench's provider list.
 			 *
-			 * The order of the menu entries is analog to the calls' order of this method.
+			 * Its actions will be available in nova::SearchBar once registered.
 			 *
-			 * @param title The menu's title shown in the menu bar (it might contain the hotkey character "&")
-			 * @param needs_tool_bar if a tool bar should be created and shown too
+			 * Usually, if you add content using one of the register methods, their providers
+			 * get automatically registered and calling this method is not required.
 			 *
-			 * @return A pointer to the created menu
-			 */
-			MenuActionProvider* ConstructMenu(const QString& title, bool needs_tool_bar = false);
-			
-			/**
-			 * @brief Constructs one of the standard menus and displays it in the menu bar.
+			 * @param provider The nova::ActionProvider to be registered
 			 *
-			 * This function overloads ConstructMenu()
-			 *
-			 * @param standard_menu specifies which menu should be created
-			 * @param needs_tool_bar if a tool bar should be created and shown too
-			 *
-			 * @return A pointer to the created menu or nullptr if standard_menu is invalid
-			 *
-			 * @sa ConstructMenu()
-			 * @sa get_standard_menu()
-			 */
-			MenuActionProvider* ConstructMenu(StandardMenu standard_menu, bool needs_tool_bar = false);
-			
-			/**
-			 * @brief Constructs one of the standard actions and handles its functionality.
-			 *
-			 * @param standard_action specifies which action should be created.
-			 * @param provider is the ActionProvider the action gets associated with.
-			 * @return A pointer to the created action or nullptr if standard_action is invalid
-			 *
-			 * @sa StandardAction to see a list of available actions
-			 */
-			QAction* ConstructStandardAction(StandardAction standard_action, ActionProvider* provider);
-			
-			/**
-			 * @brief Inserts a widget into the program's status bar.
-			 *
-			 * The widget is always inserted in front of the progress monitor.
-			 *
-			 * @param widget The widget to be inserted
-			 * @param stretch The stretch factor (optional, default: 1)
-			 *
-			 * @sa QStatusBar::addPermanentWidget()
-			 */
-			void AddStatusBarWidget(QWidget* widget, int stretch = 1);
-			
-			/**
-			 * @brief Creates and shows an icon in the system's tray menu.
-			 *
-			 * The tray icon has a context menu which is a normal action provider with the title "Tray Icon"
-			 * (translation context: "nova/menu").
-			 *
-			 * Clicking the icon will restore the window.
-			 *
-			 * Further notifications are shown by the tray icon.
-			 *
-			 * @return A pointer to the created tray icon
-			 */
-			QSystemTrayIcon* ConstructSystemTrayIcon();
-			
-			/**
-			 * @brief Adds an ActionProvider to the workbench's provider list.
-			 *
-			 * Its actions can be found using the SearchBar once their provider is registered.
-			 *
-			 * @param provider The ActionProvider to be registered
+			 * @sa UnregisterActionProvider()
 			 */
 			inline void RegisterActionProvider(ActionProvider* provider) {
 				providers << provider;
 			}
 			
 			/**
-			 * @brief Adds a ToolWindow class to the workbench.
+			 * @brief Unregisters a nova::ActionProvider.
 			 *
-			 * The ToolWindow is shown and available once registered.
+			 * Its actions won't be available anymore in nova::SearchBar once
+			 * unregistered.
+			 *
+			 * @param provider The nova::ActionProvider to be unregistered
+			 *
+			 * @sa RegisterActionProvider()
+			 */
+			inline void UnregisterActionProvider(ActionProvider* provider) {
+				providers.removeAll(provider);
+			}
+			
+			/**
+			 * @brief Adds a nova::ToolWindow class to the workbench.
+			 *
+			 * The tool window will be shown and its actions can be found
+			 * using nova::SearchBar once registered.
 			 *
 			 * The subclass must have a constructor with QWidget* as parameter (the tool window's parent window)
 			 *
 			 * @tparam T The class to be registered
+			 * @return The instance of the tool window being created
 			 */
 			template<class T>
-			void RegisterToolWindow() {
+			T* RegisterToolWindow() {
 				ToolWindow* tool_window = new T(static_cast<QWidget*>(this));
 				
 				RegisterActionProvider(tool_window);
 				tool_windows << tool_window;
-				
+				tool_window->ConstructNavigationAction(&tool_window_actions);
 				addDockWidget(tool_window->default_layout, tool_window);
+				
+				return static_cast<T*>(tool_window);
 			}
 			
 			/**
-			 * @brief Adds a SettingsPage class to the workbench.
+			 * @brief Adds a nova::SettingsPage class to the workbench.
 			 *
-			 * The SettingsPage will be shown in the SettingsDialog and can be found using the SearchBar.
+			 * The settings page will be shown in nova::SettingsDialog and its actions can be found
+			 * using nova::SearchBar once registered.
 			 *
 			 * The subclass must have a constructor with QObject* as parameter (the page's parent)
 			 *
 			 * @tparam T The class to be registered
+			 * @return The instance of the settings page being created
+			 *
 			 * @sa OpenSettings()
 			 */
 			template<class T>
-			void RegisterSettingsPage() {
+			T* RegisterSettingsPage() {
 				SettingsPage* settings_page = new T(static_cast<QObject*>(this));
-				settings_page->RecreateActions(this);  // Associated workbench as parameter
+				
+				Properties parameters;
+				parameters["workbench"] = reinterpret_cast<quintptr>(this);
+				settings_page->RecreateActions(parameters);  // Associated workbench as parameter
 				
 				RegisterActionProvider(settings_page);
 				settings_pages << settings_page;
+				settings_page->ConstructNavigationAction(&settings_page_actions, this);
+				
+				return static_cast<T*>(settings_page);
 			}
 			
 			/**
-			 * @brief Starts a SettingsDialog with the workbench's SettingsPage objects being registered.
+			 * @brief Starts nova::SettingsDialog and opens a specific page.
 			 *
-			 * @param page Which page should be opened first (optional, default: the first one)
-			 * @sa SettingsDialog
+			 * @param page The page which is opened first (optional, default: the first one)
+			 * @param widget The widget to be focused (optional, default: none)
+			 *
+			 * @sa nova::SettingsDialog
 			 */
-			void OpenSettings(SettingsPage* page = nullptr);
+			void OpenSettings(SettingsPage* page = nullptr, QWidget* widget = nullptr);
 			
 			/**
 			 * @brief Returns the given standard menu which was created using ConstructMenu(StandardMenu).
@@ -232,12 +192,39 @@ namespace nova {
 			 * @return The menu or nullptr if the menu is never constructed
 			 * @sa ConstructMenu()
 			 */
-			MenuActionProvider* get_standard_menu(StandardMenu standard_menu) const;
+			inline MenuActionProvider* get_standard_menu(StandardMenu standard_menu) const { return standard_menus[standard_menu]; }
 			
 			/**
-			 * @brief Returns a pointer to the window's taskbar button.
+			 * @brief Returns the given standard action which was created using ConstructStandardAction().
+			 *
+			 * @return The action or nullptr if the action is never constructed
+			 * @sa ConstructStandardAction()
 			 */
-			inline QWinTaskbarButton* get_taskbar_button() const { return taskbar_button; }
+			inline QAction* get_standard_action(StandardAction standard_action) const { return standard_actions[standard_action]; }
+			
+			/**
+			 * @brief Returns a list of all action providers being associated with this workbench.
+			 *
+			 * @sa nova::ActionProvider
+			 * @sa RegisterActionProvider()
+			 */
+			inline QList<ActionProvider*> get_action_providers() const { return providers; }
+			
+			/**
+			 * @brief Returns a list of all tool windows being associated with this workbench.
+			 *
+			 * @sa nova::ToolWindow
+			 * @sa RegisterToolWindow()
+			 */
+			inline QList<ToolWindow*> get_tool_windows() const { return tool_windows; }
+			
+			/**
+			 * @brief Returns a list of all settings pages being associated with this workbench.
+			 *
+			 * @sa nova::SettingsPage
+			 * @sa RegisterSettingsPage()
+			 */
+			inline QList<SettingsPage*> get_settings_pages() const { return settings_pages; }
 			
 			/**
 			 * @brief Returns a pointer to the workbench's icon in the system's tray menu.
@@ -257,85 +244,150 @@ namespace nova {
 			 * @sa get_system_tray_menu()
 			 */
 			inline MenuActionProvider* get_system_tray_menu() const { return menu_tray; }
-			
-			/**
-			 * @brief Returns a list of all action providers being associated with this workbench.
-			 *
-			 * @sa ActionProvider
-			 * @sa RegisterActionProvider()
-			 */
-			inline QList<ActionProvider*> get_action_providers() const { return providers; }
-			
-			/**
-			 * @brief Returns a list of all tool windows being associated with this workbench.
-			 *
-			 * @sa ToolWindow
-			 * @sa RegisterToolWindow()
-			 */
-			inline QList<ToolWindow*> get_tool_windows() const { return tool_windows; };
-			
-			/**
-			 * @brief Returns a list of all settings pages being associated with this workbench.
-			 *
-			 * @sa SettingsPage
-			 * @sa RegisterSettingsPage()
-			 */
-			inline QList<SettingsPage*> get_settings_pages() const { return settings_pages; };
 		
 		protected:
 			/**
-			 * @brief Resets all tool windows and tool bars to their default position.
+			 * @brief Creates a new nova::Workbench.
 			 *
-			 * This method can be overridden to add extra functionality.
+			 * The constructor should only be called once per application.
+			 * Calling this constructor automatically updates the reference of nova::workbench.
 			 *
-			 * @sa ToolWindow::ResetLayout()
+			 * @param parent The parent window (optional, default: none)
+			 *
+			 * @sa nova::workbench
 			 */
-			virtual void ResetLayout();
+			explicit Workbench(QWidget* parent = nullptr);
 			
 			/**
-			 * Reimplements QWidget::showEvent()
+			 * @brief Creates a new menu and displays it in the menu bar.
 			 *
-			 * Please do always call this implementation when overriding.
+			 * The order of the menu entries is analog to the calls' order of this method.
+			 *
+			 * @param title The menu's title shown in the menu bar (can contain the hotkey character "&")
+			 * @param needs_tool_bar if a tool bar should be created and shown too
+			 *
+			 * @return A pointer to the created menu
+			 */
+			MenuActionProvider* ConstructMenu(const QString& title, bool needs_tool_bar = false);
+			
+			/**
+			 * @brief Creates one of the standard menus and displays it in the menu bar.
+			 *
+			 * @param standard_menu specifies which menu should be created
+			 * @param needs_tool_bar if a tool bar should be created and shown too
+			 *
+			 * @return A pointer to the created menu or nullptr if the parameter standard_menu is invalid.
+			 *
+			 * @sa StandardMenu to see a list of all available menus
+			 * @sa ConstructMenu()
+			 * @sa get_standard_menu()
+			 */
+			MenuActionProvider* ConstructMenu(StandardMenu standard_menu, bool needs_tool_bar = false);
+			
+			/**
+			 * @brief Creates one of the standard actions.
+			 *
+			 * Standard actions are fully implemented and ready to use.
+			 *
+			 * @param standard_action specifies which action should be created
+			 * @param provider is the nova::ActionProvider the action gets associated with
+			 *
+			 * @return A pointer to the created action or nullptr if the parameter standard_action is invalid.
+			 *
+			 * @sa StandardAction to see a list of all available actions
+			 */
+			QAction* ConstructStandardAction(StandardAction standard_action, ActionProvider* provider);
+			
+			/**
+			 * @brief Inserts a widget into the application's status bar.
+			 *
+			 * The widget is always inserted in front of the progress monitor.
+			 *
+			 * @param widget The widget to be inserted
+			 * @param stretch The stretch factor (optional, default: 1)
+			 *
+			 * @sa QStatusBar::addPermanentWidget()
+			 */
+			void AddStatusBarWidget(QWidget* widget, int stretch = 1);
+			
+			/**
+			 * @brief Creates and shows an icon in the system's tray menu.
+			 *
+			 * The tray icon has a context menu which is a normal nova::MenuActionProvider with the title "Tray Icon".
+			 *
+			 * Clicking the icon will activate the window. In addition, notifications will be shown by the tray icon.
+			 *
+			 * @return A pointer to the created tray icon
+			 *
+			 * @sa get_system_tray_icon()
+			 * @sa get_system_tray_menu()
+			 */
+			QSystemTrayIcon* ConstructSystemTrayIcon();
+			
+			/**
+			 * @brief Resets all tool windows and tool bars to their default position.
+			 *
+			 * Tool bars and tool windows save their default position after creation.
+			 *
+			 * The workbench's geometry is restored too.
+			 */
+			void RestoreLayout();
+			
+			/**
+			 * @brief Please do always call this implementation when overriding.
+			 *
+			 * This method is internally required.
 			 */
 			void showEvent(QShowEvent* event) override;
 			
 			/**
-			 * Reimplements ProgressMonitor::UpdateProgressView()
-			 */
-			void UpdateProgressView(bool is_active, Task* task) override;
-			
-			/**
-			 * Reimplements Notifier::UpdateNotificationView()
-			 */
-			void UpdateNotificationView(bool is_active, Notification* notification) override;
-			
-			/**
-			 * Reimplements Notifier::ShowNotificationPopup()
+			 * @brief Please do always call this implementation when overriding.
 			 *
-			 * A popup is only shown if the workbench has a tray icon.
+			 * This method is internally required.
 			 */
-			void ShowNotificationPopup(Notification* notification) override;
+			void keyPressEvent(QKeyEvent* event) override;
+			
+			/**
+			 * This method is internally required and should not be called.
+			 */
+			void UpdateProgressView(bool is_active, const Task* task) override;
+			
+			/**
+			 * This method is internally required and should not be called.
+			 */
+			void UpdateNotificationView(bool is_active, const Notification* notification) override;
+			
+			/**
+			 * @brief A popup is only shown if the workbench has a tray icon.
+			 *
+			 * This method is internally required and should not be called.
+			 */
+			void ShowNotificationPopup(const Notification* notification) override;
 		
 		private:
 			friend class SearchBar;
 			friend class SettingsDialog;
 			
-			Ui::Workbench* ui;
+			Ui::Workbench* const ui;
 			
-			MenuActionProvider* menu_file;
-			MenuActionProvider* menu_edit;
-			MenuActionProvider* menu_window;
-			MenuActionProvider* menu_help;
-			
+			MenuActionProvider* standard_menus[4] = {};  // Array length must be up-to-date
+			QAction* standard_actions[5] = {};  // Array length must be up-to-date
 			MenuActionProvider* menu_tray;
+			
+			ActionProvider tool_bar_actions;
+			ActionProvider tool_window_actions;
+			ActionProvider settings_page_actions;
 			
 			QList<ActionProvider*> providers;
 			QList<ToolWindow*> tool_windows;
 			QList<SettingsPage*> settings_pages;
 			
-			QWinTaskbarButton* taskbar_button;
 			QSystemTrayIcon* tray_icon;
-		
+
+#ifdef WIN32
+			ITaskbarList4* taskbar;
+#endif
+			
 		private slots:
 			void sysTrayActivated(QSystemTrayIcon::ActivationReason reason = QSystemTrayIcon::Trigger);
 			void notificationLinkActivated(const QString& link);

@@ -9,17 +9,21 @@ project(NovaFramework
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-# Qt
-find_package(Qt5 REQUIRED
-             COMPONENTS Core Gui Widgets WinExtras)
+find_package(Qt6 COMPONENTS Core Gui Widgets Core5Compat)
+if(NOT Qt6_FOUND)
+	find_package(Qt5 REQUIRED COMPONENTS Core Gui Widgets)
+endif()
 
 set(CMAKE_INCLUDE_CURRENT_DIR ON)
-
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTOUIC ON)
+set(CMAKE_AUTOUIC_SEARCH_PATHS "res/")
 
-set(CMAKE_AUTOUIC_SEARCH_PATHS res/)
+# For compatibility with Qt5
+add_compile_definitions(QT_WARN_DEPRECATED_UP_TO=0x050F00)
+add_compile_definitions(QT_DISABLE_DEPRECATED_UP_TO=0x050F00)
 
 # Tests
 option(NOVA_TESTS "If CMake should also build/provide tests for Nova." OFF)
@@ -38,6 +42,7 @@ if(Doxygen_FOUND)
 	set(DOXYGEN_SHOW_FILES No)
 	set(DOXYGEN_SHOW_USED_FILES No)
 	set(DOXYGEN_MACRO_EXPANSION Yes)
+	set(DOXYGEN_INHERIT_DOCS No)
 	
 	if(NOVA_INSTALL_DOC)
 		doxygen_add_docs(doc include/ ALL)
@@ -48,7 +53,6 @@ if(Doxygen_FOUND)
 	endif()
 endif()
 
-# Target
 set(NOVA_PUBLIC_HEADERS
     include/nova.h
     include/workbench.h
@@ -59,10 +63,11 @@ set(NOVA_PUBLIC_HEADERS
     include/notification.h
     include/toolwindow.h
     include/settings.h)
-add_library(Nova SHARED
+
+add_library(NovaFramework SHARED
             # moc needs adding the headers
             ${NOVA_PUBLIC_HEADERS}
-
+			
             src/workbench.cpp
             src/actionprovider.cpp
             src/quickdialog.cpp
@@ -72,15 +77,25 @@ add_library(Nova SHARED
             src/toolwindow.cpp
             src/settings.cpp)
 
-set_target_properties(Nova PROPERTIES
+# Ensure that no compiler adds the prefix "lib" on Windows
+if(WIN32)
+	set_target_properties(NovaFramework PROPERTIES PREFIX "")
+endif()
+
+set_target_properties(NovaFramework PROPERTIES
                       OUTPUT_NAME novaf
                       PUBLIC_HEADER "${NOVA_PUBLIC_HEADERS}")
-target_include_directories(Nova PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
+target_include_directories(NovaFramework PUBLIC $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include/>
                            $<INSTALL_INTERFACE:include/>)
-target_link_libraries(Nova PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets Qt5::WinExtras)
+
+if(Qt6_FOUND)
+	target_link_libraries(NovaFramework PUBLIC Qt6::Core Qt6::Gui Qt6::Widgets Qt6::Core5Compat)
+else()
+	target_link_libraries(NovaFramework PUBLIC Qt5::Core Qt5::Gui Qt5::Widgets)
+endif()
 
 # Installation rules
-install(TARGETS Nova
+install(TARGETS NovaFramework
         EXPORT NovaFrameworkConfig
         ARCHIVE DESTINATION lib/
         LIBRARY DESTINATION lib/
