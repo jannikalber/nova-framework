@@ -62,7 +62,8 @@ set(NOVA_PUBLIC_HEADERS
     include/progress.h
     include/notification.h
     include/toolwindow.h
-    include/settings.h)
+    include/settings.h
+    include/contentpage.h)
 
 add_library(NovaFramework SHARED
             # moc needs adding the headers
@@ -75,7 +76,8 @@ add_library(NovaFramework SHARED
             src/progress.cpp
             src/notification.cpp
             src/toolwindow.cpp
-            src/settings.cpp)
+            src/settings.cpp
+            src/contentpage.cpp)
 
 # Ensure that no compiler adds the prefix "lib" on Windows
 if(WIN32)

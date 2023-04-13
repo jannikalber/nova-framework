@@ -39,8 +39,10 @@
 #include "searchbar.h"
 #include "toolwindow.h"
 #include "settings.h"
+#include "contentpage.h"
 
 #define NOVA_CONTEXT "nova/workbench"
+#define NOVA_CURRENT_VIEW_STYLESHEET "QTabBar::tab { color: palette(text); }"
 
 // Workaround to support Qt5 and Qt6
 #if WIN32
@@ -55,9 +57,10 @@ namespace nova {
 	Workbench* workbench;
 	
 	Workbench::Workbench(QWidget* parent):
-			QMainWindow(parent), ProgressMonitor(this), Notifier(),
+			QMainWindow(parent), ProgressMonitor(this), Notifier(), TempActionProvider(NOVA_TR("Tab")),
 			ui(new Ui::Workbench()), menu_tray(nullptr), tool_bar_actions(ActionProvider(NOVA_TR("Tool bar"))),
-			tool_window_actions(NOVA_TR("Tool window")), settings_page_actions(NOVA_TR("Settings")), tray_icon(nullptr) {
+			tool_window_actions(NOVA_TR("Tool window")), settings_page_actions(NOVA_TR("Settings")), root_view(nullptr),
+			current_page(nullptr), current_view(nullptr), tray_icon(nullptr) {
 		workbench = this;
 		ui->setupUi(this);
 		
@@ -76,11 +79,16 @@ namespace nova {
 		}
 #endif
 		
+		RegisterActionProvider(this);
 		RegisterActionProvider(&tool_bar_actions);
 		RegisterActionProvider(&tool_window_actions);
 		RegisterActionProvider(&settings_page_actions);
 		
+		set_welcome_actions(QList<QAction*>());  // Must be called once
+		
 		connect(ui->lblNotificationLinks, &QLabel::linkActivated, this, &Workbench::notificationLinkActivated);
+		connect(ui->lblEmptyView, &QLabel::linkActivated, this, &Workbench::lblEmptyViewLinkActivated);
+		connect(this, &Workbench::currentContentPageChanged, this, &Workbench::currentContentPageChanged2);
 	}
 	
 	Workbench::~Workbench() noexcept {
@@ -89,6 +97,18 @@ namespace nova {
 #ifdef WIN32
 		if (taskbar != nullptr) taskbar->Release();
 #endif
+	}
+	
+	void Workbench::OpenContentPage(ContentPage* page) {
+		if (root_view == nullptr) {
+			root_view = new ContentTabView(this);
+			static_cast<ContentTabView*>(root_view)->setStyleSheet(NOVA_CURRENT_VIEW_STYLESHEET);
+			
+			ui->stwCentralWidget->addWidget(*root_view);
+			ui->stwCentralWidget->setCurrentIndex(1);
+		}
+		
+		root_view->Open(page);
 	}
 	
 	void Workbench::OpenSettings(SettingsPage* page, QWidget* widget) {
@@ -141,6 +161,65 @@ namespace nova {
 		QAction* action;
 		
 		switch (standard_action) {
+			case Action_Close:
+				action = provider->ConstructAction(NOVA_TR("&Close"));
+				action->setEnabled(false);
+				action->setShortcut(QKeySequence("Ctrl+W"));
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) { action->setEnabled(view != nullptr); });
+				connect(action, &QAction::triggered, [this]() { if (current_view != nullptr) current_view->CloseCurrent(); });
+				
+				break;
+			
+			case Action_CloseGroup:
+				action = provider->ConstructAction(NOVA_TR("Close &Group"));
+				action->setEnabled(false);
+				action->setShortcut(QKeySequence("Ctrl+Alt+W"));
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) { action->setEnabled(view != nullptr); });
+				connect(action, &QAction::triggered, [this]() { if (current_view != nullptr) current_view->Close(); });
+				
+				break;
+			
+			case Action_CloseAll:
+				action = provider->ConstructAction(NOVA_TR("Close &All"));
+				action->setEnabled(false);
+				action->setShortcut(QKeySequence("Ctrl+Shift+W"));
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) { action->setEnabled(view != nullptr); });
+				connect(action, &QAction::triggered, [this]() { if (root_view != nullptr) root_view->Close(); });
+				
+				break;
+			
+			case Action_CloseOthers:
+				action = provider->ConstructAction(NOVA_TR("Close &Others"));
+				action->setEnabled(false);
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {
+					action->setEnabled((view != nullptr) && (view->count() > 1));
+				});
+				connect(action, &QAction::triggered, [this]() { if (current_view != nullptr) current_view->CloseMultiple(true, false, true); });
+				
+				break;
+			
+			case Action_CloseTabsLeft:
+				action = provider->ConstructAction(NOVA_TR("Close Tabs to the &Left"));
+				action->setEnabled(false);
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {
+					action->setEnabled((view != nullptr) && (view->currentIndex() > 0));
+				});
+				connect(action, &QAction::triggered, [this]() { if (current_view != nullptr) current_view->CloseMultiple(true, false, false); });
+				
+				break;
+			
+			case Action_CloseTabsRight:
+				action = provider->ConstructAction(NOVA_TR("Close Tabs to the &Right"));
+				action->setEnabled(false);
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {
+					action->setEnabled((view != nullptr) && (view->currentIndex() < (view->count() - 1)));
+				});
+				connect(action, &QAction::triggered, [this]() {
+					if (current_view != nullptr) current_view->CloseMultiple(false, false, true);
+				});
+				
+				break;
+			
 			case Action_Exit:
 				action = provider->ConstructAction(NOVA_TR("&Exit"));
 				action->setShortcut(QKeySequence("Ctrl+Q"));
@@ -271,7 +350,7 @@ namespace nova {
 		if (!is_active) {
 			ui->lblProgressDescription->setText(NOVA_TR("Ready"));
 			ui->prbProgress->setVisible(false);
-			
+
 #ifdef WIN32
 			if ((taskbar != nullptr) && (windowHandle() != nullptr)) {
 				HWND native_window = reinterpret_cast<HWND>(windowHandle()->winId());
@@ -286,7 +365,7 @@ namespace nova {
 			ui->prbProgress->setVisible(true);
 			ui->prbProgress->setMaximum(pb_maximum);
 			ui->prbProgress->setValue(task->get_value());
-			
+
 #ifdef WIN32
 			if ((taskbar != nullptr) && (windowHandle() != nullptr)) {
 				HWND native_window = reinterpret_cast<HWND>(windowHandle()->winId());
@@ -349,6 +428,59 @@ namespace nova {
 		}
 	}
 	
+	void Workbench::set_welcome_actions(const QList<QAction*>& welcome_actions) {
+		this->welcome_actions = welcome_actions;
+		
+		// Display all available actions again
+		QString markdown = ("## " + QApplication::applicationDisplayName() + "\n\n");
+		
+		for (int i = 0 ; i < welcome_actions.count() ; ++i) {
+			QAction* action = welcome_actions[i];
+			markdown += ("[" + action->toolTip()
+			             + (action->shortcut().isEmpty() ? "" : (" [" + action->shortcut().toString() + "]"))
+			             + "](" + QString::number(i) + ")\n\n");
+		}
+		
+		markdown += NOVA_TR("(Drag tabs here to open)");
+		ui->lblEmptyView->setText(markdown);
+	}
+	
+	void Workbench::RecreateActions(const Properties& creation_parameters) {
+		ClearActions();
+		
+		// Create a navigation page for every tab
+		if (root_view != nullptr) {
+			for (ContentPage* i : root_view->ListPages()) {
+				QAction* action = ConstructAction(i->get_title());
+				action->setIcon(i->get_icon());
+				
+				connect(action, &QAction::triggered, [i]() { i->Activate(); });
+			}
+		}
+	}
+	
+	void Workbench::currentContentPageChanged2(ContentPage* page, ContentTabView* view) {
+		// Since there's only one ContentPage provider at time, it's always at the first position in the list.
+		static bool has_old = false;
+		if (has_old) providers.removeAt(0);
+		
+		if (view == nullptr) {
+			ui->stwCentralWidget->setCurrentIndex(0);
+			ui->stwCentralWidget->removeWidget(*root_view);
+			
+			root_view = nullptr;  // The view deletes itself
+			has_old = false;
+		} else {
+			providers.insert(0, page);
+			has_old = true;
+		}
+		
+		current_page = page;
+		current_view = view;
+		
+		RecreateActions();
+	}
+	
 	void Workbench::sysTrayActivated(QSystemTrayIcon::ActivationReason reason) {
 		if (reason != QSystemTrayIcon::Trigger) return;
 		// Restore window when minimized
@@ -359,5 +491,9 @@ namespace nova {
 	
 	void Workbench::notificationLinkActivated(const QString& link) {
 		ActivateNotificationAction(link);
+	}
+	
+	void Workbench::lblEmptyViewLinkActivated(const QString& link) {
+		welcome_actions[link.toInt()]->trigger();
 	}
 }

@@ -32,6 +32,9 @@ struct ITaskbarList4;
 namespace Ui { class Workbench; }
 
 namespace nova {
+	class ContentPage;
+	class ContentView;
+	class ContentTabView;
 	class MenuActionProvider;
 	class SearchBar;
 }
@@ -55,7 +58,8 @@ namespace nova {
 	 *
 	 * @sa nova::workbench
 	 */
-	class NOVA_API Workbench : public QMainWindow, public ProgressMonitor, public Notifier {
+	class NOVA_API Workbench : public QMainWindow, public ProgressMonitor, public Notifier,
+	                           private TempActionProvider {  // TempActionProvider for the navigation actions of the content pages
 		Q_OBJECT
 		
 		public:
@@ -81,6 +85,19 @@ namespace nova {
 			 * @sa ConstructStandardAction()
 			 */
 			enum StandardAction {  // Array length below must be up-to-date
+				//! "Close" to close the current content page [Ctrl+W] (title: "&Close")
+				Action_Close,
+				//! "Close Group" to close the whole group of content pages being active [Ctrl+Alt+W] (title: "Close &Group")
+				Action_CloseGroup,
+				//! "Close All" to close all content pages [Ctrl+Shift+W] (title: "Close &All")
+				Action_CloseAll,
+				//! "Close Others" to close all tabs in the current group except the current one (title: "Close &Others")
+				Action_CloseOthers,
+				//! "Close Tabs to the Left" to close all tabs to the left of the current one (title: "Close Tabs to the &Left")
+				Action_CloseTabsLeft,
+				//! "Close Tabs to the Right" to close all tabs to the right of the current one (title: "Close Tabs to the &Right")
+				Action_CloseTabsRight,
+				//! "Exit" to exit the application [Ctrl+Q] (title: "&Exit")
 				Action_Exit,
 				//! "Settings" to open the (automatically available) settings dialog [Ctrl+Shift+S] (title: "&Settings")
 				Action_Settings,
@@ -177,6 +194,19 @@ namespace nova {
 			}
 			
 			/**
+			 * @brief Opens the given nova::ContentPage.
+			 *
+			 * The content page is added to the active content tab view. If there's no
+			 * active tab view, a new one is created.
+			 *
+			 * @param page The page to be opened.
+			 *
+			 * @sa nova::ContentPage
+			 * @sa get_current_page()
+			 */
+			void OpenContentPage(ContentPage* page);
+			
+			/**
 			 * @brief Starts nova::SettingsDialog and opens a specific page.
 			 *
 			 * @param page The page which is opened first (optional, default: the first one)
@@ -209,6 +239,24 @@ namespace nova {
 			 * @sa RegisterActionProvider()
 			 */
 			inline QList<ActionProvider*> get_action_providers() const { return providers; }
+			
+			/**
+			 * @brief Returns the current content page or nullptr if there's none.
+			 *
+			 * @sa nova::ContentPage
+			 * @sa OpenContentPage()
+			 */
+			inline ContentPage* get_current_page() const { return current_page; }
+			
+			/**
+			 * @brief Returns the current content page's tab view or nullptr if there's none.
+			 *
+			 * A content tab view can display multiple content pages. When splitting, there are more
+			 * than one content tab views.
+			 *
+			 * @sa nova::ContentTabView
+			 */
+			inline ContentTabView* get_current_view() const { return current_view; }
 			
 			/**
 			 * @brief Returns a list of all tool windows being associated with this workbench.
@@ -363,6 +411,17 @@ namespace nova {
 			 * This method is internally required and should not be called.
 			 */
 			void ShowNotificationPopup(const Notification* notification) override;
+			
+			/**
+			 * @brief Welcome actions are displayed if there's no active content page. They should
+			 * give an overview of the application's main functionality.
+			 *
+			 * Additionally, the application's name (QApplication::applicationDisplayName()) is displayed
+			 * at the same place.
+			 *
+			 * @param actions A list of welcome actions to be displayed
+			 */
+			void set_welcome_actions(const QList<QAction*>& actions);
 		
 		private:
 			friend class SearchBar;
@@ -371,12 +430,18 @@ namespace nova {
 			Ui::Workbench* const ui;
 			
 			MenuActionProvider* standard_menus[4] = {};  // Array length must be up-to-date
-			QAction* standard_actions[5] = {};  // Array length must be up-to-date
+			QAction* standard_actions[11] = {};  // Array length must be up-to-date
 			MenuActionProvider* menu_tray;
 			
 			ActionProvider tool_bar_actions;
 			ActionProvider tool_window_actions;
 			ActionProvider settings_page_actions;
+			
+			QList<QAction*> welcome_actions;
+			
+			ContentView* root_view;
+			ContentPage* current_page;
+			ContentTabView* current_view;
 			
 			QList<ActionProvider*> providers;
 			QList<ToolWindow*> tool_windows;
@@ -388,9 +453,18 @@ namespace nova {
 			ITaskbarList4* taskbar;
 #endif
 			
+			void RecreateActions(const Properties& creation_parameters = Properties()) override;
+		
+		signals:
+			//! @cond
+			void currentContentPageChanged(ContentPage* page, ContentTabView* view);
+			//! @endcond
+		
 		private slots:
+			void currentContentPageChanged2(ContentPage* page, ContentTabView* view);
 			void sysTrayActivated(QSystemTrayIcon::ActivationReason reason = QSystemTrayIcon::Trigger);
 			void notificationLinkActivated(const QString& link);
+			void lblEmptyViewLinkActivated(const QString& link);
 	};
 }
 

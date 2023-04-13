@@ -19,18 +19,22 @@
 #include <QLineEdit>
 #include <QCheckBox>
 #include <QTextEdit>
+#include <QGraphicsView>
 #include <QGroupBox>
 #include <QVBoxLayout>
 #include <QSpacerItem>
 #include <QSizePolicy>
 
 #include <workbench.h>
+#include <contentpage.h>
 #include <toolwindow.h>
 #include <settings.h>
 #include <quickdialog.h>
 #include <actionprovider.h>
 #include <progress.h>
 #include <notification.h>
+
+#define NOVA_QT_STD_ICON(name) QApplication::style()->standardIcon(name)
 
 QSettings settings("these are", "test settings");
 
@@ -43,9 +47,9 @@ class TestToolWindow : public nova::ToolWindow {
 			QAction* action1 = ConstructAction("Tool Window 1");
 			QAction* action2 = ConstructAction("Tool Window 2");
 			QAction* action3 = ConstructAction("Tool Window 3");
-			action1->setIcon(QApplication::style()->standardIcon(QStyle::SP_DirClosedIcon));
-			action2->setIcon(QApplication::style()->standardIcon(QStyle::SP_ComputerIcon));
-			action3->setIcon(QApplication::style()->standardIcon(QStyle::SP_DialogSaveButton));
+			action1->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DirClosedIcon));
+			action2->setIcon(NOVA_QT_STD_ICON(QStyle::SP_ComputerIcon));
+			action3->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DialogSaveButton));
 			
 			auto* group = new nova::ActionGroup();
 			group->AddAction(action1);
@@ -104,12 +108,46 @@ class TestSettingsPage : public nova::SettingsPage {
 		QCheckBox* edit_2;
 };
 
+template <class T>
+class TestContentPage : public nova::ContentPage {
+	public:
+		inline explicit TestContentPage(QWidget* parent):
+				nova::ContentPage(parent, "New Page", NOVA_QT_STD_ICON(QStyle::SP_FileIcon), true) {
+			set_content_widget(new T());
+			Initialize();
+		}
+		
+		inline void Initialize() {}
+};
+
+template <>
+void TestContentPage<QGraphicsView>::Initialize() {
+	set_title("Untitled");
+	auto* action_test_page = ConstructAction("Content Page 1");
+	action_test_page->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DirIcon));
+	connect(action_test_page, &QAction::triggered, [this]() {
+		static bool saved = false;
+		if (!saved) {
+			set_title("Test Page");
+			set_suffix("*");
+			saved = true;
+		} else set_suffix(QString());
+	});
+	ShowAction(action_test_page);
+	
+	auto* action_test_page_2 = ConstructAction("Content Page 2");
+	action_test_page_2->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DriveDVDIcon));
+	action_test_page_2->setCheckable(true);
+	ShowAction(action_test_page_2);
+}
+
 class Workbench : public nova::Workbench {
 	public:
 		inline Workbench():
 				nova::Workbench() {
 			RegisterToolWindow<TestToolWindow>();
 			RegisterSettingsPage<TestSettingsPage>();
+			OpenContentPage(new TestContentPage<QGraphicsView>(this));
 			
 			// Status bar
 			AddStatusBarWidget(new QLabel("Label 1", this), 2);
@@ -120,10 +158,24 @@ class Workbench : public nova::Workbench {
 			// Menu demo
 			nova::MenuActionProvider* menu_file = ConstructMenu(Workbench::Menu_File, true);
 			
+			auto* action_new = menu_file->ConstructAction("&New Page");
+			action_new->setIcon(NOVA_QT_STD_ICON(QStyle::SP_FileIcon));
+			connect(action_new, &QAction::triggered, [this]() { OpenContentPage(new TestContentPage<QTextEdit>(this)); });
+			menu_file->ShowAction(action_new, true);
+			
 			QAction* check_action = get_standard_menu(Workbench::Menu_File)->ConstructAction("&Checkable Action");
 			check_action->setCheckable(true);
 			check_action->setWhatsThis("What's This?");
 			menu_file->ShowAction(check_action, true);
+			
+			auto* close_group = new nova::ActionGroup();
+			close_group->AddAction(ConstructStandardAction(Workbench::Action_Close, menu_file));
+			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseGroup, menu_file));
+			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseAll, menu_file));
+			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseOthers, menu_file));
+			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseTabsLeft, menu_file));
+			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseTabsRight, menu_file));
+			menu_file->ShowActionGroup(close_group);
 			
 			QAction* action_exit = ConstructStandardAction(Workbench::Action_Exit, menu_file);
 			menu_file->ShowAction(action_exit);
@@ -137,7 +189,7 @@ class Workbench : public nova::Workbench {
 			
 			// QuickDialog / Notification demo 1
 			QAction* edit_action = menu_edit->ConstructAction("&Edit Demo");
-			edit_action->setIcon(QApplication::style()->standardIcon(QStyle::SP_DriveCDIcon));
+			edit_action->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DriveCDIcon));
 			connect(edit_action, &QAction::triggered, [this]() {
 				nova::ActionList action_list;
 				action_list.insert("Quit", [this](nova::Notification* notification) { close(); });
@@ -154,7 +206,8 @@ class Workbench : public nova::Workbench {
 			menu_edit->ShowAction(edit_action, true);
 			menu_edit->ShowAction(check_action);
 			
-			menu_edit->ShowAction(ConstructStandardAction(Workbench::Action_Settings, menu_edit), true);
+			QAction* settings_action = ConstructStandardAction(Workbench::Action_Settings, menu_edit);
+			menu_edit->ShowAction(settings_action, true);
 			
 			ConstructMenu(Workbench::Menu_Window);
 			get_standard_menu(Workbench::Menu_Window)->ShowAction(
@@ -164,17 +217,21 @@ class Workbench : public nova::Workbench {
 			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Menu_Help);
 			
 			auto* group_help = new nova::ActionGroup();
-			group_help->AddAction(ConstructStandardAction(Workbench::Action_SearchBar, menu_help));
+			QAction* search_bar_action = ConstructStandardAction(Workbench::Action_SearchBar, menu_help);
+			
+			group_help->AddAction(search_bar_action);
 			group_help->AddAction(ConstructStandardAction(Workbench::Action_DirectHelp, menu_help));
 			menu_help->ShowActionGroup(group_help);
 			
-			// QuickDialog demo 2
-			nova::MenuActionProvider* sub_menu = menu_help->ConstructSubMenu("Demos", this);
+			nova::MenuActionProvider* sub_menu = menu_help->ConstructSubMenu("&Sub Menu", this);
+			menu_help->ShowMenu(sub_menu);
+			sub_menu->ShowAction(sub_menu->ConstructAction("Sub Menu &Action"));
 			
-			QAction* help_action = sub_menu->ConstructAction("&Help Demo");
+			// QuickDialog demo 2
+			QAction* help_action = menu_help->ConstructAction("&Help Demo");
 			connect(help_action, &QAction::triggered, [this]() {
-				const QList<QIcon>& icons = {QApplication::style()->standardIcon(QStyle::SP_MediaVolume),
-				                             QApplication::style()->standardIcon(QStyle::SP_DirHomeIcon),
+				const QList<QIcon>& icons = {NOVA_QT_STD_ICON(QStyle::SP_MediaVolume),
+				                             NOVA_QT_STD_ICON(QStyle::SP_DirHomeIcon),
 				                             QIcon()};
 				const QString& text = nova::QuickDialog::InputItem(this, "Help Topics",
 				                                                   QStringList({"Page 1", "Page 2"}), icons);
@@ -188,12 +245,15 @@ class Workbench : public nova::Workbench {
 				dialog.set_content_widget(&text_edit);
 				dialog.exec();
 			});
-			
-			menu_help->ShowMenu(sub_menu);
-			sub_menu->ShowAction(help_action);
+			menu_help->ShowAction(help_action);
 			
 			// Actions can also be added to groups when the group is already shown (useful for plugins)
-			group_help->AddAction(menu_help->ConstructAction("Plugin Action"));
+			group_help->AddAction(menu_help->ConstructAction("&Plugin Action"));
+			
+			QList<QAction*> welcome_actions;
+			welcome_actions << search_bar_action;
+			welcome_actions << settings_action;
+			set_welcome_actions(welcome_actions);
 			
 			// ProgressMonitor demo
 			auto* task1 = new nova::Task(this, "Testing 1", true,
@@ -217,10 +277,16 @@ class Workbench : public nova::Workbench {
 
 int main(int argc, char** argv) {
 	new QApplication(argc, argv);
-	QApplication::setWindowIcon(QApplication::style()->standardIcon(QStyle::SP_MediaPlay));
+	QApplication::setApplicationDisplayName("Nova Framework");
+	QApplication::setWindowIcon(NOVA_QT_STD_ICON(QStyle::SP_MediaPlay));
 	
-	Workbench workbench;
-	workbench.show();
+	auto* workbench = new Workbench();
+	workbench->show();
 	
-	return QApplication::exec();
+	const int exit_code = QApplication::exec();
+	
+	delete workbench;
+	delete qApp;
+	
+	return exit_code;
 }
