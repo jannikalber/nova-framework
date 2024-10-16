@@ -165,7 +165,7 @@ namespace nova {
 	class NOVA_API ProgressMonitor {
 		public:
 			NOVA_DISABLE_COPY(ProgressMonitor)
-			virtual ~ProgressMonitor() noexcept = default;
+			inline virtual ~ProgressMonitor() noexcept = default;
 			
 			/**
 			 * @brief Returns a pointer to the active task or nullptr if there's none.

@@ -7,6 +7,7 @@
 #define NOVA_FRAMEWORK_TOOLWINDOW_H
 
 #include <Qt>
+#include <QObject>
 #include <QDockWidget>
 
 #include "nova.h"
@@ -14,8 +15,10 @@
 
 class QWidget;
 class QAction;
+class QMenu;
 class QMainWindow;
 class QToolBar;
+class QPoint;
 
 namespace nova { class Workbench; }
 
@@ -33,16 +36,25 @@ namespace nova {
 	 * Call nova::Workbench::RegisterToolWindow<YourSubclass>() to register the tool window class.
 	 *
 	 * This class must be derived.
+	 *
+	 * The translations belong to the context "nova/workbench".
 	 */
 	class NOVA_API ToolWindow : public QDockWidget, public ActionProvider {
+		Q_OBJECT
+		
 		public:
 			NOVA_DISABLE_COPY(ToolWindow)
-			virtual ~ToolWindow() noexcept = default;
+			inline virtual ~ToolWindow() noexcept = default;
 			
 			/**
 			 * @brief Returns the tool window's content widget.
 			 */
 			QWidget* get_content_widget() const;
+			
+			/**
+			 * @brief Returns a pointer to the tool window's tool bar or nullptr if it's never created.
+			 */
+			inline QToolBar* get_tool_bar() const { return tool_bar; }
 			
 			/**
 			 * @brief Returns the tool window's orientation.
@@ -62,9 +74,9 @@ namespace nova {
 			 *
 			 * Use set_content_widget() to change the window's content.
 			 *
-			 * @param parent The parent window
 			 * @param title The tool window's title
 			 * @param orientation if the tool window is a vertical or a horizontal one
+			 * @param window The associated workbench (subclass constructors should forward this pointer)
 			 * @param needs_tool_bar if a tool bar should also be created and shown (optional, default: false)
 			 * @param default_layout The tool window's initial position or Qt::NoDockWidgetArea if it should be hidden
 			 * by default. (optional, default: hidden)
@@ -72,7 +84,7 @@ namespace nova {
 			 * @sa set_content_widget()
 			 * @sa nova::Workbench::RegisterToolWindow()
 			 */
-			ToolWindow(QWidget* parent, const QString& title, Qt::Orientation orientation,
+			ToolWindow(const QString& title, Qt::Orientation orientation, Workbench* window,
 			           bool needs_tool_bar = false, Qt::DockWidgetArea default_layout = Qt::NoDockWidgetArea);
 			
 			/**
@@ -88,18 +100,21 @@ namespace nova {
 			/**
 			 * This method is internally required and should not be called.
 			 */
-			void DisplayAction(QAction* action, int index, bool, int) override;
+			void DisplayAction(QAction* action, int index,
+			                    bool is_important_action, int important_actions_index) override;
 			
 			/**
 			 * This method is internally required and should not be called.
 			 */
-			void DisplaySeparators(bool show_regular, int index_regular, bool, int) override;
+			void DisplaySeparators(bool show_regular, int index_regular,
+			                       bool show_important_actions, int index_important_actions) override;
 		
 		private:
 			friend class Workbench;
 			
 			QMainWindow* const nested_main_window;
 			QToolBar* const tool_bar;
+			QMenu* const menu;
 			
 			Qt::DockWidgetArea default_layout;
 			const bool default_hidden;
@@ -107,7 +122,11 @@ namespace nova {
 			// For Workbench::RestoreLayout(); it holds the width (vertical ones) or height (horizontal ones) of the tool window
 			int initial_size;
 			
+			// Checkable action to enable or disable the tool window
 			void ConstructNavigationAction(ActionProvider* provider);
+			
+		private slots:
+			void customContextMenuRequested2(const QPoint& pos);
 	};
 }
 

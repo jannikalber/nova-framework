@@ -6,6 +6,7 @@
 #include "workbench.h"
 
 #ifdef WIN32
+	#include <cwchar>
 	#include <windows.h>
 	#include <winuser.h>
 	#include <shobjidl_core.h>
@@ -13,11 +14,11 @@
 
 #include <QtGlobal>
 #include <QtVersionChecks>
-#include <Qt>
 #include <QSize>
 #include <QDateTime>
 #include <QKeySequence>
 #include <QShowEvent>
+#include <QCloseEvent>
 #include <QKeyEvent>
 #include <QIcon>
 #include <QPixmap>
@@ -86,9 +87,10 @@ namespace nova {
 		
 		set_welcome_actions(QList<QAction*>());  // Must be called once
 		
+		connect(qApp, &QApplication::focusChanged, this, &Workbench::focusChanged);
+		connect(this, &Workbench::currentContentPageChanged, this, &Workbench::currentContentPageChanged2, Qt::DirectConnection);
 		connect(ui->lblNotificationLinks, &QLabel::linkActivated, this, &Workbench::notificationLinkActivated);
 		connect(ui->lblEmptyView, &QLabel::linkActivated, this, &Workbench::lblEmptyViewLinkActivated);
-		connect(this, &Workbench::currentContentPageChanged, this, &Workbench::currentContentPageChanged2);
 	}
 	
 	Workbench::~Workbench() noexcept {
@@ -101,14 +103,34 @@ namespace nova {
 	
 	void Workbench::OpenContentPage(ContentPage* page) {
 		if (root_view == nullptr) {
-			root_view = new ContentTabView(this);
-			static_cast<ContentTabView*>(root_view)->setStyleSheet(NOVA_CURRENT_VIEW_STYLESHEET);
-			
-			ui->stwCentralWidget->addWidget(*root_view);
-			ui->stwCentralWidget->setCurrentIndex(1);
+			RootSplitMergeHelper(new ContentTabView(nullptr, this));
+			// Required to call ContentTabView::Open()
+			current_view = static_cast<ContentTabView*>(root_view);
 		}
 		
-		root_view->Open(page);
+		current_view->Open(page);
+	}
+	
+	void Workbench::MoveContentPage(ContentPage* page, ContentTabView* target) {
+		if ((page != nullptr) && (page->get_current_view() != nullptr)
+		    && (target != nullptr) && (page->get_current_view() != target)) {
+			const int index = page->get_current_view()->content_pages.indexOf(page);
+			page->get_current_view()->removeTab(index);
+			page->get_current_view()->content_pages.removeAt(index);
+			
+			page->setParent(nullptr);
+			target->Open(page);
+		}
+	}
+	
+	bool Workbench::CloseAllContentPages() {
+		if (root_view != nullptr) return root_view->Close();
+		else return true;
+	}
+	
+	QList<ContentPage*> Workbench::ListPages() const {
+		if (root_view != nullptr) return root_view->ListPages();
+		else return QList<ContentPage*>();
 	}
 	
 	void Workbench::OpenSettings(SettingsPage* page, QWidget* widget) {
@@ -144,6 +166,10 @@ namespace nova {
 				standard_menus[standard_menu] = ConstructMenu(NOVA_TR("&Edit"), needs_tool_bar);
 				return standard_menus[standard_menu];
 			
+			case Menu_View:
+				standard_menus[standard_menu] = ConstructMenu(NOVA_TR("&View"), needs_tool_bar);
+				return standard_menus[standard_menu];
+			
 			case Menu_Window:
 				standard_menus[standard_menu] = ConstructMenu(NOVA_TR("&Window"), needs_tool_bar);
 				return standard_menus[standard_menu];
@@ -163,16 +189,16 @@ namespace nova {
 		switch (standard_action) {
 			case Action_Close:
 				action = provider->ConstructAction(NOVA_TR("&Close"));
-				action->setEnabled(false);
+				action->setEnabled(current_view != nullptr);
 				action->setShortcut(QKeySequence("Ctrl+W"));
-				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) { action->setEnabled(view != nullptr); });
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {	action->setEnabled(view != nullptr); });
 				connect(action, &QAction::triggered, [this]() { if (current_view != nullptr) current_view->CloseCurrent(); });
 				
 				break;
 			
 			case Action_CloseGroup:
 				action = provider->ConstructAction(NOVA_TR("Close &Group"));
-				action->setEnabled(false);
+				action->setEnabled(current_view != nullptr);
 				action->setShortcut(QKeySequence("Ctrl+Alt+W"));
 				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) { action->setEnabled(view != nullptr); });
 				connect(action, &QAction::triggered, [this]() { if (current_view != nullptr) current_view->Close(); });
@@ -181,16 +207,16 @@ namespace nova {
 			
 			case Action_CloseAll:
 				action = provider->ConstructAction(NOVA_TR("Close &All"));
-				action->setEnabled(false);
+				action->setEnabled(current_view != nullptr);
 				action->setShortcut(QKeySequence("Ctrl+Shift+W"));
 				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) { action->setEnabled(view != nullptr); });
-				connect(action, &QAction::triggered, [this]() { if (root_view != nullptr) root_view->Close(); });
+				connect(action, &QAction::triggered, [this]() { CloseAllContentPages(); });
 				
 				break;
 			
 			case Action_CloseOthers:
 				action = provider->ConstructAction(NOVA_TR("Close &Others"));
-				action->setEnabled(false);
+				action->setEnabled((current_view != nullptr) && (current_view->count() > 1));
 				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {
 					action->setEnabled((view != nullptr) && (view->count() > 1));
 				});
@@ -200,7 +226,7 @@ namespace nova {
 			
 			case Action_CloseTabsLeft:
 				action = provider->ConstructAction(NOVA_TR("Close Tabs to the &Left"));
-				action->setEnabled(false);
+				action->setEnabled((current_view != nullptr) && (current_view->currentIndex() > 0));
 				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {
 					action->setEnabled((view != nullptr) && (view->currentIndex() > 0));
 				});
@@ -210,7 +236,7 @@ namespace nova {
 			
 			case Action_CloseTabsRight:
 				action = provider->ConstructAction(NOVA_TR("Close Tabs to the &Right"));
-				action->setEnabled(false);
+				action->setEnabled((current_view != nullptr) && (current_view->currentIndex() < (current_view->count() - 1)));
 				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {
 					action->setEnabled((view != nullptr) && (view->currentIndex() < (view->count() - 1)));
 				});
@@ -234,8 +260,36 @@ namespace nova {
 				
 				break;
 			
+			case Action_SplitRight:
+				action = provider->ConstructAction(NOVA_TR("Split &Right"));
+				action->setEnabled((current_view != nullptr) && (current_view->count() > 1));
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {
+					action->setEnabled((view != nullptr) && (view->count() > 1));
+				});
+				connect(action, &QAction::triggered, [this]() {
+					if ((current_view != nullptr) && (current_page != nullptr)) {
+						current_view->Split(current_page, Qt::Horizontal);
+					}
+				});
+				
+				break;
+			
+			case Action_SplitDown:
+				action = provider->ConstructAction(NOVA_TR("Split &Down"));
+				action->setEnabled((current_view != nullptr) && (current_view->count() > 1));
+				connect(this, &Workbench::currentContentPageChanged, [action](ContentPage*, ContentTabView* view) {
+					action->setEnabled((view != nullptr) && (view->count() > 1));
+				});
+				connect(action, &QAction::triggered, [this]() {
+					if ((current_view != nullptr) && (current_page != nullptr)) {
+						current_view->Split(current_page, Qt::Vertical);
+					}
+				});
+				
+				break;
+				
 			case Action_RestoreLayout:
-				action = provider->ConstructAction(NOVA_TR("Restore &Default Layout"));
+				action = provider->ConstructAction(NOVA_TR("Restore Default &Layout"));
 				connect(action, &QAction::triggered, [this]() { RestoreLayout(); });
 				
 				break;
@@ -310,6 +364,20 @@ namespace nova {
 		setGeometry(QStyle::alignedRect(Qt::LeftToRight, Qt::AlignCenter, QSize(920, 640), screen()->availableGeometry()));
 	}
 	
+	void Workbench::RecreateActions(const Properties& creation_parameters) {
+		ClearActions();
+		
+		// Create a navigation page for every tab
+		if (root_view != nullptr) {
+			for (ContentPage* i : root_view->ListPages()) {
+				QAction* action = ConstructAction(i->get_title());
+				action->setIcon(i->get_icon());
+				
+				connect(action, &QAction::triggered, [i]() { i->Activate(); });
+			}
+		}
+	}
+	
 	void Workbench::showEvent(QShowEvent* event) {
 		QMainWindow::showEvent(event);
 		
@@ -319,13 +387,18 @@ namespace nova {
 		}
 		
 		// Showing the window might change some settings (e.g. geometry)
-		Properties parameters;
-		parameters["workbench"] = reinterpret_cast<quintptr>(this);
 		for (SettingsPage* i : settings_pages) {
-			i->RecreateActions(parameters);
+			i->RecreateActions();
 		}
 		
 		event->accept();
+	}
+	
+	void Workbench::closeEvent(QCloseEvent* event) {
+		QMainWindow::closeEvent(event);
+		
+		if (CloseAllContentPages()) event->accept();
+		else event->ignore();
 	}
 	
 	void Workbench::keyPressEvent(QKeyEvent* event) {
@@ -378,9 +451,12 @@ namespace nova {
 	
 	void Workbench::UpdateNotificationView(bool is_active, const Notification* notification) {
 		QIcon icon;
+		QString description;
 		if (is_active) {
 			icon = Notification::ConvertToIcon(notification->get_type());
-			ui->lblNotification->setText(notification->get_title() + ": " + notification->get_message());
+			description = notification->get_title() + ": " + notification->get_message();
+			
+			ui->lblNotification->setText(description);
 			ui->lblNotificationIcon->setPixmap(icon.pixmap(16, 16));
 			ui->lblNotificationLinks->setText(notification->CreateLinksLabelText());
 		}
@@ -390,11 +466,12 @@ namespace nova {
 			HWND native_window = reinterpret_cast<HWND>(windowHandle()->winId());
 			
 			HICON native_icon = nullptr;
+			const wchar_t* native_description = description.toStdWString().c_str();
 			if (is_active && !icon.isNull()) {
 				native_icon = qt_pixmapToWinHICON(icon.pixmap(GetSystemMetrics(SM_CXSMICON)));
 			}
 			
-			taskbar->SetOverlayIcon(native_window, native_icon, nullptr);
+			taskbar->SetOverlayIcon(native_window, native_icon, native_description);
 			DestroyIcon(native_icon);
 		}
 #endif
@@ -445,34 +522,59 @@ namespace nova {
 		ui->lblEmptyView->setText(markdown);
 	}
 	
-	void Workbench::RecreateActions(const Properties& creation_parameters) {
-		ClearActions();
-		
-		// Create a navigation page for every tab
-		if (root_view != nullptr) {
-			for (ContentPage* i : root_view->ListPages()) {
-				QAction* action = ConstructAction(i->get_title());
-				action->setIcon(i->get_icon());
-				
-				connect(action, &QAction::triggered, [i]() { i->Activate(); });
+	void Workbench::RootSplitMergeHelper(ContentView* new_root) {
+		if (new_root == nullptr) {
+			// Needs to be set before currentContentPageChanged2() is run to avoid access violations since no other view was activated
+			if (current_page != nullptr) {
+				UnregisterActionProvider(current_page);
 			}
+			current_page = nullptr;
+			current_view = nullptr;
+			
+			ui->stwCentralWidget->setCurrentIndex(0);
+			if (root_view != nullptr) ui->stwCentralWidget->removeWidget(*root_view);
+			
+			root_view = nullptr;  // The view deletes itself
+			
+			emit currentContentPageChanged(nullptr, nullptr);
+		} else {
+			root_view = new_root;
+			
+			if (ui->stwCentralWidget->count() > 1) {
+				ui->stwCentralWidget->removeWidget(ui->stwCentralWidget->widget(1));
+			}
+			ui->stwCentralWidget->addWidget(*root_view);
+			ui->stwCentralWidget->setCurrentIndex(1);
+		}
+	}
+	
+	void Workbench::focusChanged(QWidget*, QWidget* widget) {
+		if (widget == nullptr) return;
+		
+		// Look if the widget belongs to a content page to activate it
+		QWidget* current = widget->parentWidget();
+		while ((current != nullptr) && (dynamic_cast<ContentPage*>(current) == nullptr)) {
+			current = current->parentWidget();
+		}
+		
+		if (current != nullptr) {
+			ContentPage* page = dynamic_cast<ContentPage*>(current);
+			if (!page->IsActive()) page->Activate();
 		}
 	}
 	
 	void Workbench::currentContentPageChanged2(ContentPage* page, ContentTabView* view) {
-		// Since there's only one ContentPage provider at time, it's always at the first position in the list.
-		static bool has_old = false;
-		if (has_old) providers.removeAt(0);
+		if (current_page != nullptr) {
+			UnregisterActionProvider(current_page);
+		}
 		
-		if (view == nullptr) {
-			ui->stwCentralWidget->setCurrentIndex(0);
-			ui->stwCentralWidget->removeWidget(*root_view);
+		if (view != nullptr) {
+			RegisterActionProvider(page);
 			
-			root_view = nullptr;  // The view deletes itself
-			has_old = false;
-		} else {
-			providers.insert(0, page);
-			has_old = true;
+			view->setStyleSheet(NOVA_CURRENT_VIEW_STYLESHEET);
+			if ((current_view != nullptr) && (current_view != view)) {
+				current_view->setStyleSheet(QString());
+			}
 		}
 		
 		current_page = page;

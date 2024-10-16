@@ -105,7 +105,7 @@ namespace nova {
 			/**
 			 * This method is internally required and should not be called.
 			 */
-			void RecreateActions(const Properties& creation_parameters) override;
+			void RecreateActions(const Properties& creation_parameters = Properties()) override;
 			
 			/**
 			 * @brief This pure virtual method is called when the settings are requested
@@ -165,22 +165,24 @@ namespace nova {
 			/**
 			 * @brief Creates a new nova::SettingsPage.
 			 *
-			 * @param parent The QObject's parent
 			 * @param title The page's title (shown in nova::SettingsDialog)
+			 * @param window The associated workbench (subclass constructors should forward this pointer)
 			 *
 			 * @sa nova::Workbench::RegisterSettingsPage()
 			 */
-			SettingsPage(QObject* parent, const QString& title);
+			SettingsPage(const QString& title, Workbench* window);
 			
 			/**
-			 * @brief Sets the page's content page.
+			 * @brief Sets the page's content widget.
 			 *
-			 * The page must not be initialized depending on the current configuration.
+			 * The framework takes ownership of the pointer.
+			 *
+			 * The page must not be initialized with the current configuration.
 			 * This job is done automatically by LoadSettings().
 			 *
 			 * This method must not be called after the settings page is registered.
 			 *
-			 * If you define the dynamic property "nova/setting" (type: string, use the setting's name)
+			 * If you define the dynamic property "nova/setting" (type: string, the setting's name)
 			 * in the children widgets, they can be found using the SearchBar. Alternatively, you can define "nova/setting"
 			 * just as true (type: bool). In this case Nova uses the property "text" as title. This way is recommended
 			 * to avoid redundancies.
@@ -210,6 +212,8 @@ namespace nova {
 		private:
 			friend class SettingsDialog;
 			friend class Workbench;
+			
+			Workbench* const workbench_window;
 			
 			const QString title;
 			QWidget* content_widget;

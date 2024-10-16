@@ -195,7 +195,7 @@ namespace nova {
 	class NOVA_API Notifier {
 		public:
 			NOVA_DISABLE_COPY(Notifier)
-			virtual ~Notifier() noexcept = default;
+			inline virtual ~Notifier() noexcept = default;
 			
 			/**
 			 * @brief Shows a notification without creating a nova::Notification object.

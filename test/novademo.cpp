@@ -7,11 +7,13 @@
 #include <QThread>
 #include <QString>
 #include <QVariant>
+#include <QKeySequence>
 #include <QSettings>
 #include <QList>
 #include <QIcon>
 #include <QStyle>
 #include <QApplication>
+#include <QMessageBox>
 #include <QWidget>
 #include <QMenu>
 #include <QAction>
@@ -40,8 +42,8 @@ QSettings settings("these are", "test settings");
 
 class TestToolWindow : public nova::ToolWindow {
 	public:
-		inline explicit TestToolWindow(QWidget* parent):
-				nova::ToolWindow(parent, "My Tool Window", Qt::Vertical, true, Qt::LeftDockWidgetArea) {
+		inline explicit TestToolWindow(nova::Workbench* window):
+				nova::ToolWindow("My Tool Window", Qt::Vertical, window, true, Qt::LeftDockWidgetArea) {
 			set_content_widget(new QTextEdit(this));
 			
 			QAction* action1 = ConstructAction("Tool Window 1");
@@ -51,19 +53,21 @@ class TestToolWindow : public nova::ToolWindow {
 			action2->setIcon(NOVA_QT_STD_ICON(QStyle::SP_ComputerIcon));
 			action3->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DialogSaveButton));
 			
+			connect(action1, &QAction::triggered, static_cast<QTextEdit*>(get_content_widget()), &QTextEdit::clear);
+			
 			auto* group = new nova::ActionGroup();
 			group->AddAction(action1);
-			group->AddAction(action2);
+			group->AddAction(action2, true);
 			
 			ShowActionGroup(group);
-			ShowAction(action3);
+			ShowAction(action3, true);
 		}
 };
 
 class TestSettingsPage : public nova::SettingsPage {
 	public:
-		inline explicit TestSettingsPage(QObject* parent):
-				nova::SettingsPage(parent, "My Settings Page"), edit_1(nullptr), edit_2(nullptr) {
+		inline explicit TestSettingsPage(nova::Workbench* window):
+				nova::SettingsPage("My Settings Page", window), edit_1(nullptr), edit_2(nullptr) {
 			auto* root_widget = new QWidget();
 			auto* root_layout = new QVBoxLayout(root_widget);
 			
@@ -111,19 +115,29 @@ class TestSettingsPage : public nova::SettingsPage {
 template <class T>
 class TestContentPage : public nova::ContentPage {
 	public:
-		inline explicit TestContentPage(QWidget* parent):
-				nova::ContentPage(parent, "New Page", NOVA_QT_STD_ICON(QStyle::SP_FileIcon), true) {
-			set_content_widget(new T());
+		inline explicit TestContentPage(nova::Workbench* window):
+				nova::ContentPage("New Page", NOVA_QT_STD_ICON(QStyle::SP_FileIcon), window, true) {
+			set_content_widget(new T(this));
 			Initialize();
 		}
 		
-		inline void Initialize() {}
+		inline void Initialize() {
+			auto* action_test_page = ConstructAction("Alternative Page");
+			action_test_page->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DriveHDIcon));
+			ShowAction(action_test_page, true);
+		}
+		
+	protected:
+		inline bool CanClose() override {
+			return (QMessageBox::question(this, QApplication::applicationDisplayName(), "Close?") == QMessageBox::Yes);
+		}
 };
 
 template <>
 void TestContentPage<QGraphicsView>::Initialize() {
 	set_title("Untitled");
 	auto* action_test_page = ConstructAction("Content Page 1");
+	action_test_page->setShortcut(QKeySequence("F1"));
 	action_test_page->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DirIcon));
 	connect(action_test_page, &QAction::triggered, [this]() {
 		static bool saved = false;
@@ -133,12 +147,12 @@ void TestContentPage<QGraphicsView>::Initialize() {
 			saved = true;
 		} else set_suffix(QString());
 	});
-	ShowAction(action_test_page);
+	ShowAction(action_test_page, true);
 	
 	auto* action_test_page_2 = ConstructAction("Content Page 2");
 	action_test_page_2->setIcon(NOVA_QT_STD_ICON(QStyle::SP_DriveDVDIcon));
 	action_test_page_2->setCheckable(true);
-	ShowAction(action_test_page_2);
+	ShowAction(action_test_page_2, true);
 }
 
 class Workbench : public nova::Workbench {
@@ -176,6 +190,11 @@ class Workbench : public nova::Workbench {
 			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseTabsLeft, menu_file));
 			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseTabsRight, menu_file));
 			menu_file->ShowActionGroup(close_group);
+			
+			auto* split_group = new nova::ActionGroup();
+			split_group->AddAction(ConstructStandardAction(Workbench::Action_SplitRight, menu_file));
+			split_group->AddAction(ConstructStandardAction(Workbench::Action_SplitDown, menu_file));
+			menu_file->ShowActionGroup(split_group);
 			
 			QAction* action_exit = ConstructStandardAction(Workbench::Action_Exit, menu_file);
 			menu_file->ShowAction(action_exit);
@@ -223,9 +242,11 @@ class Workbench : public nova::Workbench {
 			group_help->AddAction(ConstructStandardAction(Workbench::Action_DirectHelp, menu_help));
 			menu_help->ShowActionGroup(group_help);
 			
-			nova::MenuActionProvider* sub_menu = menu_help->ConstructSubMenu("&Sub Menu", this);
+			nova::MenuActionProvider* sub_menu = menu_help->ConstructMenu(this, "&Sub Menu");
 			menu_help->ShowMenu(sub_menu);
 			sub_menu->ShowAction(sub_menu->ConstructAction("Sub Menu &Action"));
+			
+			RegisterActionProvider(sub_menu);
 			
 			// QuickDialog demo 2
 			QAction* help_action = menu_help->ConstructAction("&Help Demo");
@@ -286,7 +307,5 @@ int main(int argc, char** argv) {
 	const int exit_code = QApplication::exec();
 	
 	delete workbench;
-	delete qApp;
-	
 	return exit_code;
 }

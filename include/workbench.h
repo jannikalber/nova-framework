@@ -7,6 +7,7 @@
 #define NOVA_FRAMEWORK_WORKBENCH_H
 
 #include <QtGlobal>
+#include <Qt>
 #include <QObject>
 #include <QList>
 #include <QString>
@@ -22,6 +23,7 @@
 
 class QWidget;
 class QShowEvent;
+class QCloseEvent;
 class QKeyEvent;
 class QAction;
 
@@ -35,6 +37,7 @@ namespace nova {
 	class ContentPage;
 	class ContentView;
 	class ContentTabView;
+	class ContentSplitView;
 	class MenuActionProvider;
 	class SearchBar;
 }
@@ -66,13 +69,15 @@ namespace nova {
 			/**
 			 * @brief A list of standard menus being available
 			 *
-			 * @sa ConstructMenu(StandardMenu)
+			 * @sa ConstructMenu(StandardMenu, bool)
 			 */
 			enum StandardMenu {  // Array length below must be up-to-date
 				//! File (title: "&File")
 				Menu_File,
 				//! Edit (title: "&Edit")
 				Menu_Edit,
+				//! View (title: "&View")
+				Menu_View,
 				//! Window (title: "&Window")
 				Menu_Window,
 				//! Help (title: "&Help")
@@ -99,8 +104,12 @@ namespace nova {
 				Action_CloseTabsRight,
 				//! "Exit" to exit the application [Ctrl+Q] (title: "&Exit")
 				Action_Exit,
-				//! "Settings" to open the (automatically available) settings dialog [Ctrl+Shift+S] (title: "&Settings")
+				//! "Settings" to open the (automatically created) settings dialog [Ctrl+Shift+S] (title: "&Settings")
 				Action_Settings,
+				//! "Split Right" to split the current content page to the right (title: "Split &Right")
+				Action_SplitRight,
+				//! "Split Down" to split the current content page down (title: "Split &Down")
+				Action_SplitDown,
 				//! "Restore Default Layout" for resetting all tool bars and tool windows to their default position
 				Action_RestoreLayout,
 				//! "Direct Help" to enable QWhatsThis [F2] (title: "&Direct Help")
@@ -148,14 +157,15 @@ namespace nova {
 			 * The tool window will be shown and its actions can be found
 			 * using nova::SearchBar once registered.
 			 *
-			 * The subclass must have a constructor with QWidget* as parameter (the tool window's parent window)
+			 * The subclass must have a constructor with nova::Workbench* as parameter. The tool window
+			 * can only be registered to one workbench.
 			 *
-			 * @tparam T The class to be registered
+			 * @tparam T The nova::ToolWindow class to be registered
 			 * @return The instance of the tool window being created
 			 */
 			template<class T>
 			T* RegisterToolWindow() {
-				ToolWindow* tool_window = new T(static_cast<QWidget*>(this));
+				ToolWindow* tool_window = new T(this);
 				
 				RegisterActionProvider(tool_window);
 				tool_windows << tool_window;
@@ -171,20 +181,19 @@ namespace nova {
 			 * The settings page will be shown in nova::SettingsDialog and its actions can be found
 			 * using nova::SearchBar once registered.
 			 *
-			 * The subclass must have a constructor with QObject* as parameter (the page's parent)
+			 * The subclass must have a constructor with nova::Workbench* as parameter. The page can
+			 * only be registered to one workbench.
 			 *
-			 * @tparam T The class to be registered
+			 * @tparam T The nova::SettingsPage class to be registered
 			 * @return The instance of the settings page being created
 			 *
 			 * @sa OpenSettings()
 			 */
 			template<class T>
 			T* RegisterSettingsPage() {
-				SettingsPage* settings_page = new T(static_cast<QObject*>(this));
+				SettingsPage* settings_page = new T(this);
 				
-				Properties parameters;
-				parameters["workbench"] = reinterpret_cast<quintptr>(this);
-				settings_page->RecreateActions(parameters);  // Associated workbench as parameter
+				settings_page->RecreateActions();
 				
 				RegisterActionProvider(settings_page);
 				settings_pages << settings_page;
@@ -207,6 +216,35 @@ namespace nova {
 			void OpenContentPage(ContentPage* page);
 			
 			/**
+			 * @brief Moves a content page from one view to another (and activates it).
+			 *
+			 * @param page The page to be moved
+			 * @param target The new target view
+			 */
+			void MoveContentPage(ContentPage* page, ContentTabView* target);
+			
+			/**
+			 * @brief Tries to close all opened content pages.
+			 *
+			 * @return true if all pages were closed successfully
+			 *
+			 * @sa nova::ContentPage::Close()
+			 * @sa nova::ContentTabView::Close(int)
+			 * @sa nova::ContentTabView::Close(nova::ContentPage*)
+			 * @sa nova::ContentTabView::CloseCurrent()
+			 * @sa nova::ContentTabView::CloseMultiple()
+			 */
+			bool CloseAllContentPages();
+			
+			/**
+			 * @brief Lists all pages all content view's in the correct order.
+			 *
+			 * @return A list of all content pages
+			 * @sa nova::ContentView::ListPages()
+			 */
+			QList<ContentPage*> ListPages() const;
+			
+			/**
 			 * @brief Starts nova::SettingsDialog and opens a specific page.
 			 *
 			 * @param page The page which is opened first (optional, default: the first one)
@@ -215,6 +253,11 @@ namespace nova {
 			 * @sa nova::SettingsDialog
 			 */
 			void OpenSettings(SettingsPage* page = nullptr, QWidget* widget = nullptr);
+			
+			/**
+			 * This method is internally required and should not be called.
+			 */
+			void RecreateActions(const Properties& creation_parameters = Properties()) override;
 			
 			/**
 			 * @brief Returns the given standard menu which was created using ConstructMenu(StandardMenu).
@@ -227,7 +270,7 @@ namespace nova {
 			/**
 			 * @brief Returns the given standard action which was created using ConstructStandardAction().
 			 *
-			 * @return The action or nullptr if the action is never constructed
+			 * @return The action or nullptr if the action was never constructed
 			 * @sa ConstructStandardAction()
 			 */
 			inline QAction* get_standard_action(StandardAction standard_action) const { return standard_actions[standard_action]; }
@@ -315,6 +358,7 @@ namespace nova {
 			 * @param needs_tool_bar if a tool bar should be created and shown too
 			 *
 			 * @return A pointer to the created menu
+			 * @sa ConstructMenu(StandardMenu, bool)
 			 */
 			MenuActionProvider* ConstructMenu(const QString& title, bool needs_tool_bar = false);
 			
@@ -327,7 +371,7 @@ namespace nova {
 			 * @return A pointer to the created menu or nullptr if the parameter standard_menu is invalid.
 			 *
 			 * @sa StandardMenu to see a list of all available menus
-			 * @sa ConstructMenu()
+			 * @sa ConstructMenu(QString, bool)
 			 * @sa get_standard_menu()
 			 */
 			MenuActionProvider* ConstructMenu(StandardMenu standard_menu, bool needs_tool_bar = false);
@@ -393,6 +437,13 @@ namespace nova {
 			 *
 			 * This method is internally required.
 			 */
+			void closeEvent(QCloseEvent* event) override;
+			
+			/**
+			 * @brief Please do always call this implementation when overriding.
+			 *
+			 * This method is internally required.
+			 */
 			void keyPressEvent(QKeyEvent* event) override;
 			
 			/**
@@ -426,11 +477,13 @@ namespace nova {
 		private:
 			friend class SearchBar;
 			friend class SettingsDialog;
+			friend class ContentTabView;
+			friend class ContentSplitView;
 			
 			Ui::Workbench* const ui;
 			
-			MenuActionProvider* standard_menus[4] = {};  // Array length must be up-to-date
-			QAction* standard_actions[11] = {};  // Array length must be up-to-date
+			MenuActionProvider* standard_menus[5] = {};  // Array length must be up-to-date
+			QAction* standard_actions[13] = {};  // Array length must be up-to-date
 			MenuActionProvider* menu_tray;
 			
 			ActionProvider tool_bar_actions;
@@ -453,14 +506,25 @@ namespace nova {
 			ITaskbarList4* taskbar;
 #endif
 			
-			void RecreateActions(const Properties& creation_parameters = Properties()) override;
+			void RootSplitMergeHelper(nova::ContentView* new_root);
 		
 		signals:
-			//! @cond
+			/**
+			 * @brief This signal is emitted when the current content page changes.
+			 *
+			 * The signal could be emitted multiple times for the same page (for example when splitting).
+			 *
+			 * @param page The new nova::ContentPage which got activated or nullptr
+			 * if no page is currently active
+			 * @param view The nova::ContentTabView which contains the new page or nullptr
+			 * if no page is currently active
+			 *
+			 * @sa nova::ContentPage::Activate()
+			 */
 			void currentContentPageChanged(ContentPage* page, ContentTabView* view);
-			//! @endcond
 		
 		private slots:
+			void focusChanged(QWidget*, QWidget* widget);
 			void currentContentPageChanged2(ContentPage* page, ContentTabView* view);
 			void sysTrayActivated(QSystemTrayIcon::ActivationReason reason = QSystemTrayIcon::Trigger);
 			void notificationLinkActivated(const QString& link);

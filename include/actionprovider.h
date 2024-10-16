@@ -18,6 +18,8 @@
 
 #include "nova.h"
 
+class QWidget;
+
 namespace nova {
 	class Workbench;
 	class ActionProvider;
@@ -79,14 +81,14 @@ namespace nova {
 			 * @brief Adds a menu to the existing group.
 			 *
 			 * This method works as well if the group has already been added to a provider.
-			 * The menu should be created by a menu provider using nova::MenuActionProvider::ConstructSubMenu()
+			 * The menu should be created by a menu provider using nova::ActionProvider::ConstructMenu()
 			 *
-			 * Menus cannot be important because tool bars don't support adding menus.
+			 * Menus cannot be important.
 			 *
 			 * @param menu The menu which should be added to the group
 			 *
 			 * @sa AddAction()
-			 * @sa nova::MenuActionProvider::ConstructSubMenu()
+			 * @sa nova::ActionProvider::ConstructMenu()
 			 */
 			void AddMenu(MenuActionProvider* menu);
 			
@@ -146,21 +148,41 @@ namespace nova {
 			virtual ~ActionProvider() noexcept;
 			
 			/**
-			 * @brief Constructs an action which is bound to this provider.
+			 * @brief Creates an action which is bound to this provider.
 			 *
 			 * The action is deleted when the provider gets deleted.
 			 *
 			 * @param text The action's title (can contain the hotkey character "&")
 			 * @return A pointer to the constructed action
+			 *
+			 * @sa MigrateAction()
 			 */
 			QAction* ConstructAction(const QString& text);
 			
 			/**
+			 * @brief Creates a menu for this provider.
+			 *
+			 * A new nova::MenuActionProvider is created. Its name contains the hierarchical path including the parent
+			 * menu's names.
+			 *
+			 * The new provider has to be manually registered.
+			 *
+			 * @param parent The QObject's parent
+			 * @param title The sub menu's title
+			 *
+			 * @return A pointer to the new menu
+			 *
+			 * @sa ShowMenu() to show the menu
+			 */
+			MenuActionProvider* ConstructMenu(QWidget* parent, const QString& title);
+			
+			/**
 			 * @brief Adds an action which wasn't constructed using ConstructAction() to the provider's list.
 			 *
-			 * The action's parent will be manipulated.
+			 * The provider takes ownership of the action.
 			 *
 			 * @param action The action to be migrated
+			 *
 			 * @sa ConstructAction()
 			 */
 			inline void MigrateAction(QAction* action) { action->setParent(&object); }
@@ -206,17 +228,17 @@ namespace nova {
 			 * @brief Shows a menu in the implementation-specific way.
 			 *
 			 * This method works similar to the method ShowAction(). Since the menus being created by the workbench
-			 * are automatically shown, this method is usually used to show sub menus (nova::MenuActionProvider::ConstructSubMenu()).
+			 * are automatically shown, this method is usually used to show context menus (ConstructMenu()).
 			 *
-			 * Menus cannot be important because tool bars don't support adding menus.
+			 * Menus cannot be important.
 			 *
 			 * @param menu The menu to be shown
 			 *
 			 * @return The nova::ActionGroup being created. A single menu also belongs to a group.
 			 *
+			 * @sa ConstructMenu()
 			 * @sa ShowAction()
 			 * @sa nova::ActionGroup::AddMenu()
-			 * @sa nova::MenuActionProvider::ConstructSubMenu()
 			 */
 			ActionGroup* ShowMenu(MenuActionProvider* menu);
 			
@@ -268,7 +290,7 @@ namespace nova {
 			
 			/**
 			 * @brief The library automatically calculates the position of necessary separators.
-			 * Your implementation should show such a separator.
+			 * Your implementation of this method should show such a separator.
 			 *
 			 * The method's default implementation does nothing.
 			 *
@@ -330,7 +352,7 @@ namespace nova {
 			 */
 			inline explicit TempActionProvider(const QString& title):
 					ActionProvider(title) {}
-			virtual ~TempActionProvider() noexcept = default;
+			inline virtual ~TempActionProvider() noexcept = default;
 			
 			/**
 			 * @brief This method allows you to recreate all of your actions.
@@ -338,7 +360,10 @@ namespace nova {
 			 * In this method, you could, for example, check if there's a new recent file. Then, you
 			 * could create a new action for it.
 			 *
-			 * Feel free to call your method as often as required.
+			 * First, you usually call ClearActions(). After deleting all old actions, you can create
+			 * some new by calling ConstructAction().
+			 *
+			 * Feel free to call your method as often as required. The method doesn't get invoked automatically.
 			 *
 			 * The default implementation does nothing.
 			 *
@@ -379,23 +404,6 @@ namespace nova {
 			NOVA_DISABLE_COPY(MenuActionProvider)
 			
 			/**
-			 * @brief Creates a new sub menu for this menu.
-			 *
-			 * A new nova::ActionProvider is created. Its name contains the hierarchical path including the parent
-			 * menu's names.
-			 *
-			 * The new provider is automatically registered but not shown.
-			 *
-			 * @param title The sub menu's title
-			 * @param window The workbench which is used for registration (optional, default: nova::workbench)
-			 *
-			 * @return A pointer to the new menu
-			 *
-			 * @sa nova::ActionProvider::ShowMenu() to show the sub menu
-			 */
-			MenuActionProvider* ConstructSubMenu(const QString& title, Workbench* window = workbench);
-			
-			/**
 			 * @brief Returns a pointer to the menu's tool bar or nullptr if it's never created.
 			 */
 			inline QToolBar* get_tool_bar() const { return tool_bar; }
@@ -424,6 +432,7 @@ namespace nova {
 		private:
 			friend class Workbench;
 			friend class ActionGroup;
+			friend class ActionProvider;
 			
 			QToolBar* const tool_bar;
 			

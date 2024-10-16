@@ -125,12 +125,10 @@ namespace nova {
 		// Because the virtual Ui will be soon created, the settings must be applied now (and not by signals and slot which are too late)
 		if (result() == QDialog::Accepted) apply();
 		
-		Properties parameters;
-		parameters["workbench"] = reinterpret_cast<quintptr>(window);
 		for (SettingsPage* i : pages) {
 			// Remove the parent
 			i->content_widget->setParent(nullptr);
-			i->RecreateActions(parameters);
+			i->RecreateActions();
 		}
 		
 		event->accept();
@@ -205,18 +203,15 @@ namespace nova {
 		}
 	}
 	
-	SettingsPage::SettingsPage(QObject* parent, const QString& title):
-			QObject(parent), TempActionProvider(NOVA_TR("Settings > ") + title),
-			title(title), content_widget(new QWidget()) {}
+	SettingsPage::SettingsPage(const QString& title, Workbench* window):
+			QObject(window), TempActionProvider(NOVA_TR("Settings > ") + title),
+			workbench_window(window), title(title), content_widget(new QWidget()) {}
 	
 	SettingsPage::~SettingsPage() noexcept {
 		delete content_widget;
 	}
 	
 	void SettingsPage::RecreateActions(const Properties& creation_parameters) {
-		if (!creation_parameters.contains("workbench")) return;
-		
-		auto* window = reinterpret_cast<Workbench*>(creation_parameters["workbench"].toULongLong());
 		ClearActions();
 		
 		const QList<QWidget*>& settings_widgets = content_widget->findChildren<QWidget*>();
@@ -241,8 +236,8 @@ namespace nova {
 						Apply();
 					});
 				} else {
-					connect(action, &QAction::triggered, [this, window, i]() {
-						window->OpenSettings(this, i);
+					connect(action, &QAction::triggered, [this, i]() {
+						workbench_window->OpenSettings(this, i);
 					});
 				}
 			}

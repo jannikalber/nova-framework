@@ -107,6 +107,12 @@ namespace nova {
 		return action;
 	}
 	
+	MenuActionProvider* ActionProvider::ConstructMenu(QWidget* parent, const QString& title) {
+		auto* provider = new MenuActionProvider(parent, (get_title() + " > " + title));
+		provider->setTitle(title);
+		return provider;
+	}
+	
 	ActionGroup* ActionProvider::FindGroup(int id) const {
 		for (ActionGroup* i : groups) {
 			if (i->get_id() == id) return i;
@@ -141,19 +147,12 @@ namespace nova {
 	}
 	
 	MenuActionProvider::MenuActionProvider(QWidget* parent, const QString& title, bool needs_tool_bar):
-			ActionProvider(QString(title).replace('&', " ")), QMenu(parent),
+			ActionProvider(QString(title).replace('&', "")), QMenu(parent),
 			tool_bar(needs_tool_bar ? new QToolBar(get_title(), parent) : nullptr) {
 		setTitle(title);
 		if (tool_bar != nullptr) {
 			tool_bar->setIconSize(QSize(16, 16));
 		}
-	}
-	
-	MenuActionProvider* MenuActionProvider::ConstructSubMenu(const QString& title, Workbench* window) {
-		auto* provider = new MenuActionProvider(dynamic_cast<QWidget*>(parent()), (get_title() + " > " + title));
-		provider->setTitle(title);
-		window->RegisterActionProvider(provider);
-		return provider;
 	}
 	
 	void MenuActionProvider::DisplayAction(QAction* action, int index, bool is_important, int important_actions_index) {
