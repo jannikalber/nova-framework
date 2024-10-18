@@ -170,33 +170,33 @@ class Workbench : public nova::Workbench {
 			ConstructSystemTrayIcon();
 			
 			// Menu demo
-			nova::MenuActionProvider* menu_file = ConstructMenu(Workbench::Menu_File, true);
+			nova::MenuActionProvider* menu_file = ConstructMenu(nova::Workbench::Menu_File, true);
 			
 			auto* action_new = menu_file->ConstructAction("&New Page");
 			action_new->setIcon(NOVA_QT_STD_ICON(QStyle::SP_FileIcon));
 			connect(action_new, &QAction::triggered, [this]() { OpenContentPage(new TestContentPage<QTextEdit>(this)); });
 			menu_file->ShowAction(action_new, true);
 			
-			QAction* check_action = get_standard_menu(Workbench::Menu_File)->ConstructAction("&Checkable Action");
+			QAction* check_action = get_standard_menu(nova::Workbench::Menu_File)->ConstructAction("&Checkable Action");
 			check_action->setCheckable(true);
 			check_action->setWhatsThis("What's This?");
 			menu_file->ShowAction(check_action, true);
 			
 			auto* close_group = new nova::ActionGroup();
-			close_group->AddAction(ConstructStandardAction(Workbench::Action_Close, menu_file));
-			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseGroup, menu_file));
-			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseAll, menu_file));
-			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseOthers, menu_file));
-			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseTabsLeft, menu_file));
-			close_group->AddAction(ConstructStandardAction(Workbench::Action_CloseTabsRight, menu_file));
+			close_group->AddAction(ConstructStandardAction(nova::Workbench::Action_Close, menu_file));
+			close_group->AddAction(ConstructStandardAction(nova::Workbench::Action_CloseGroup, menu_file));
+			close_group->AddAction(ConstructStandardAction(nova::Workbench::Action_CloseAll, menu_file));
+			close_group->AddAction(ConstructStandardAction(nova::Workbench::Action_CloseOthers, menu_file));
+			close_group->AddAction(ConstructStandardAction(nova::Workbench::Action_CloseTabsLeft, menu_file));
+			close_group->AddAction(ConstructStandardAction(nova::Workbench::Action_CloseTabsRight, menu_file));
 			menu_file->ShowActionGroup(close_group);
 			
 			auto* split_group = new nova::ActionGroup();
-			split_group->AddAction(ConstructStandardAction(Workbench::Action_SplitRight, menu_file));
-			split_group->AddAction(ConstructStandardAction(Workbench::Action_SplitDown, menu_file));
+			split_group->AddAction(ConstructStandardAction(nova::Workbench::Action_SplitRight, menu_file));
+			split_group->AddAction(ConstructStandardAction(nova::Workbench::Action_SplitDown, menu_file));
 			menu_file->ShowActionGroup(split_group);
 			
-			QAction* action_exit = ConstructStandardAction(Workbench::Action_Exit, menu_file);
+			QAction* action_exit = ConstructStandardAction(nova::Workbench::Action_Exit, menu_file);
 			menu_file->ShowAction(action_exit);
 			
 			QAction* action_tray = get_system_tray_menu()->ConstructAction("&Test");
@@ -204,7 +204,7 @@ class Workbench : public nova::Workbench {
 			get_system_tray_menu()->ShowAction(action_tray);
 			get_system_tray_menu()->ShowAction(action_exit, true);
 			
-			nova::MenuActionProvider* menu_edit = ConstructMenu(Workbench::Menu_Edit, true);
+			nova::MenuActionProvider* menu_edit = ConstructMenu(nova::Workbench::Menu_Edit, true);
 			
 			// QuickDialog / Notification demo 1
 			QAction* edit_action = menu_edit->ConstructAction("&Edit Demo");
@@ -225,21 +225,23 @@ class Workbench : public nova::Workbench {
 			menu_edit->ShowAction(edit_action, true);
 			menu_edit->ShowAction(check_action);
 			
-			QAction* settings_action = ConstructStandardAction(Workbench::Action_Settings, menu_edit);
+			QAction* settings_action = ConstructStandardAction(nova::Workbench::Action_Settings, menu_edit);
 			menu_edit->ShowAction(settings_action, true);
 			
-			ConstructMenu(Workbench::Menu_Window);
-			get_standard_menu(Workbench::Menu_Window)->ShowAction(
-					ConstructStandardAction(Workbench::Action_RestoreLayout, get_standard_menu(Workbench::Menu_Window)));
+			ConstructMenu(nova::Workbench::Menu_Window);
+			get_standard_menu(nova::Workbench::Menu_Window)->ShowAction(
+					ConstructStandardAction(nova::Workbench::Action_Switcher, get_standard_menu(nova::Workbench::Menu_Window)));
+			get_standard_menu(nova::Workbench::Menu_Window)->ShowAction(
+					ConstructStandardAction(nova::Workbench::Action_RestoreLayout, get_standard_menu(nova::Workbench::Menu_Window)));
 			
-			ConstructMenu(Workbench::Menu_Help);
-			nova::MenuActionProvider* menu_help = get_standard_menu(Workbench::Menu_Help);
+			ConstructMenu(nova::Workbench::Menu_Help);
+			nova::MenuActionProvider* menu_help = get_standard_menu(nova::Workbench::Menu_Help);
 			
 			auto* group_help = new nova::ActionGroup();
-			QAction* search_bar_action = ConstructStandardAction(Workbench::Action_SearchBar, menu_help);
+			QAction* search_bar_action = ConstructStandardAction(nova::Workbench::Action_SearchBar, menu_help);
 			
 			group_help->AddAction(search_bar_action);
-			group_help->AddAction(ConstructStandardAction(Workbench::Action_DirectHelp, menu_help));
+			group_help->AddAction(ConstructStandardAction(nova::Workbench::Action_DirectHelp, menu_help));
 			menu_help->ShowActionGroup(group_help);
 			
 			nova::MenuActionProvider* sub_menu = menu_help->ConstructMenu(this, "&Sub Menu");

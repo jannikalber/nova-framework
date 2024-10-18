@@ -13,6 +13,7 @@
 #include <QString>
 #include <QWidget>
 #include <QTabWidget>
+#include <QKeyEvent>
 #include <QSplitter>
 
 #include "nova.h"
@@ -51,23 +52,15 @@ namespace nova {
 			inline virtual ~ContentPage() noexcept = default;
 			
 			/**
-			 * @brief Focuses this page (i.e. the tab of the content view will be changed).
+			 * @brief Focuses the page (i.e. the tab of the content view will be changed).
 			 *
 			 * The page must be opened in a content view for the method to work.
 			 *
 			 * @sa nova::ContentTabView::Activate(int)
 			 * @sa nova::ContentTabView::Activate(ContentPage*)
-			 * @sa IsActive()
+			 * @sa is_active()
 			 */
 			void Activate();
-			
-			/**
-			 * @brief Checks if the page is currently active.
-			 *
-			 * @return true if active
-			 * @sa Activate()
-			 */
-			bool IsActive() const;
 			
 			/**
 			 * @brief Closes the page in its content view if possible.
@@ -83,6 +76,14 @@ namespace nova {
 			 * @sa nova::ContentTabView::CloseMultiple()
 			 */
 			bool Close();
+			
+			/**
+			 * @brief Checks if the page is currently active.
+			 *
+			 * @return true if active
+			 * @sa Activate()
+			 */
+			bool is_active() const;
 			
 			/**
 			 * @brief Returns the page's current tab view or nullptr if there's none.
@@ -195,6 +196,16 @@ namespace nova {
 			void DisplaySeparators(bool show_regular, int index_regular,
 			                       bool show_important_actions, int index_important_actions) override;
 			
+			/**
+			 * @brief Please do always call this implementation when overriding.
+			 *
+			 * This method is internally required.
+			 */
+			inline virtual void keyPressEvent(QKeyEvent* event) override {
+				// Remove [Ctrl+Tab] gesture
+				QWidget::keyPressEvent(event);
+			}
+		
 		private:
 			friend class ContentTabView;
 			
@@ -253,7 +264,7 @@ namespace nova {
 			 * This method is internally required and should not be called.
 			 */
 			virtual bool Close() = 0;
-			
+		
 		private:
 			friend class Workbench;
 			friend class ContentSplitView;
@@ -465,18 +476,18 @@ namespace nova {
 			 * @sa nova::ContentView::ListPages()
 			 */
 			QList<ContentPage*> ListPages() const override;
-			
+		
 		protected:
 			/**
 			 * This method is internally required and should not be called.
 			 */
 			inline bool Close() override { return view_1->Close() && view_2->Close(); }
-			
+		
 		private:
 			friend class ContentTabView;
 			
 			ContentSplitView(ContentView* view_1, ContentView* view_2, Qt::Orientation orientation,
-							 ContentSplitView* parent_view, Workbench* window);
+			                 ContentSplitView* parent_view, Workbench* window);
 			
 			// The view gets replaced by the remaining view when removing victim_view
 			void Merge(ContentTabView* victim_view);

@@ -61,6 +61,7 @@ set(NOVA_PUBLIC_HEADERS
     include/actionprovider.h
     include/quickdialog.h
     include/searchbar.h
+    include/switcher.h
     include/progress.h
     include/notification.h
     include/toolwindow.h
@@ -75,6 +76,7 @@ add_library(NovaFramework SHARED
             src/actionprovider.cpp
             src/quickdialog.cpp
             src/searchbar.cpp
+            src/switcher.cpp
             src/progress.cpp
             src/notification.cpp
             src/toolwindow.cpp

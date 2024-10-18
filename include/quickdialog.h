@@ -29,7 +29,7 @@ namespace nova {
 	 * They are especially suitable for querying a string or an item of a list.
 	 *
 	 * Quick dialogs should replace Qt's input dialogs, because they provide a modern look
-	 * and feel.
+	 * and they connote the simplicity of the user interface.
 	 *
 	 * @sa InputText()
 	 * @sa InputItem()

@@ -114,8 +114,10 @@ namespace nova {
 				Action_RestoreLayout,
 				//! "Direct Help" to enable QWhatsThis [F2] (title: "&Direct Help")
 				Action_DirectHelp,
-				//! "Search Bar" for browsing the application's actions [F3] | [double shift] (title: "&Search...")
-				Action_SearchBar
+				//! "Search Bar" for browsing the application's actions [F3] | [double Shift] (title: "&Search...")
+				Action_SearchBar,
+				//! "Switcher" to navigate through the tool windows and content pages [Ctrl+Tab] (title: "&Switcher...")
+				Action_Switcher
 			};
 			
 			NOVA_DISABLE_COPY(Workbench)
@@ -430,21 +432,21 @@ namespace nova {
 			 *
 			 * This method is internally required.
 			 */
-			void showEvent(QShowEvent* event) override;
+			virtual void showEvent(QShowEvent* event) override;
 			
 			/**
 			 * @brief Please do always call this implementation when overriding.
 			 *
 			 * This method is internally required.
 			 */
-			void closeEvent(QCloseEvent* event) override;
+			virtual void closeEvent(QCloseEvent* event) override;
 			
 			/**
 			 * @brief Please do always call this implementation when overriding.
 			 *
 			 * This method is internally required.
 			 */
-			void keyPressEvent(QKeyEvent* event) override;
+			virtual void keyPressEvent(QKeyEvent* event) override;
 			
 			/**
 			 * This method is internally required and should not be called.
@@ -483,7 +485,7 @@ namespace nova {
 			Ui::Workbench* const ui;
 			
 			MenuActionProvider* standard_menus[5] = {};  // Array length must be up-to-date
-			QAction* standard_actions[13] = {};  // Array length must be up-to-date
+			QAction* standard_actions[14] = {};  // Array length must be up-to-date
 			MenuActionProvider* menu_tray;
 			
 			ActionProvider tool_bar_actions;

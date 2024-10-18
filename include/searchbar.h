@@ -22,11 +22,11 @@ namespace nova { class Workbench; }
 
 namespace nova {
 	/**
-	 * @brief A dialog which can be used to browse the application's content.
+	 * @brief A dialog which can be used to browse the application's content
 	 * @headerfile searchbar.h <nova/searchbar.h>
 	 *
 	 * The dialog consists of a line edit which proposes matching actions from all nova::ActionProvider subtypes being registered.
-	 * The results can be immediately invoked by keyboard. Checkable results contain a check box to change their state.
+	 * The results can be immediately invoked by keyboard. Checkable actions contain a check box to change their state.
 	 *
 	 * The translations belong to the context "nova/searchbar".
 	 *

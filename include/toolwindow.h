@@ -47,6 +47,17 @@ namespace nova {
 			inline virtual ~ToolWindow() noexcept = default;
 			
 			/**
+			 * @brief Shows the tool window if it's currently invisible and sets focus.
+			 *
+			 * Unlike content pages, tool windows aren't really active or not, i.e. there's not
+			 * exactly one "active" tool window. This method only exists for compatibility with
+			 * content pages.
+			 *
+			 * @sa nova::ContentPage::Activate()
+			 */
+			void Activate();
+			
+			/**
 			 * @brief Returns the tool window's content widget.
 			 */
 			QWidget* get_content_widget() const;

@@ -118,20 +118,17 @@ namespace nova {
 		QDialog::hideEvent(event);
 		
 		if (event->spontaneous()) {
-			event->accept();
 			return;
 		}
 		
 		// Because the virtual Ui will be soon created, the settings must be applied now (and not by signals and slot which are too late)
 		if (result() == QDialog::Accepted) apply();
 		
-		for (SettingsPage* i : pages) {
+		for (SettingsPage* i: pages) {
 			// Remove the parent
 			i->content_widget->setParent(nullptr);
 			i->RecreateActions();
 		}
-		
-		event->accept();
 	}
 	
 	void SettingsDialog::lneFilterTextChanged(const QString& query) {
