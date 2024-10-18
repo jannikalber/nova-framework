@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!--
+  Copyright (c) 2024 by Jannik Alber.
+  All rights reserved.
+  -->
+
+<ui version="4.0" connectslotsbyname="false">
+	<class>Switcher</class>
+	
+	<widget class="QWidget" name="Switcher">
+		<property name="minimumWidth">
+			<number>400</number>
+		</property>
+		
+		<property name="maximumWidth">
+			<number>400</number>
+		</property>
+		
+		<property name="minimumHeight">
+			<number>350</number>
+		</property>
+		
+		<property name="maximumHeight">
+			<number>350</number>
+		</property>
+		
+		<layout class="QHBoxLayout" name="horizontalLayout" stretch="2,3">
+			<property name="spacing">
+				<number>0</number>
+			</property>
+			
+			<property name="leftMargin">
+				<number>0</number>
+			</property>
+			
+			<property name="rightMargin">
+				<number>0</number>
+			</property>
+			
+			<property name="topMargin">
+				<number>0</number>
+			</property>
+			
+			<property name="bottomMargin">
+				<number>0</number>
+			</property>
+			
+			<item>
+				<widget class="QListWidget" name="liwToolWindows" />
+			</item>
+			
+			<item>
+				<widget class="QListWidget" name="liwContentPages" />
+			</item>
+		</layout>
+	</widget>
+</ui>

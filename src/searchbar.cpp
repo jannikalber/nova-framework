@@ -38,6 +38,7 @@ namespace nova {
 		results = new QTreeWidget(widget);
 		
 		search_bar->setMinimumWidth(350);
+		search_bar->setMaximumWidth(350);
 		search_bar->setPlaceholderText(NOVA_TR("Browse the application"));
 		search_bar->setToolTip(NOVA_TR("<b>Note:</b> Wildcard syntax available"));
 		
@@ -58,10 +59,9 @@ namespace nova {
 		connect(search_bar, &QLineEdit::textEdited, this, &SearchBar::suggest);
 		connect(results, &QTreeWidget::itemClicked, this, &SearchBar::trigger);
 		connect(results, &QTreeWidget::itemDoubleClicked, this, &SearchBar::trigger);
-		connect(results, &QTreeWidget::itemEntered,
-		        [this](QTreeWidgetItem* item) {
-			        results->setCurrentItem(item);
-		        });
+		connect(results, &QTreeWidget::itemEntered, [this](QTreeWidgetItem* item) {
+			results->setCurrentItem(item);
+		});
 	}
 	
 	void SearchBar::keyPressEvent(QKeyEvent* event) {

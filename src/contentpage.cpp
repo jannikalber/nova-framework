@@ -53,13 +53,13 @@ namespace nova {
 		if (current_view != nullptr) current_view->Activate(this);
 	}
 	
-	bool ContentPage::IsActive() const {
-		if (current_view != nullptr) return (current_view->workbench_window->get_current_page() == this);
+	bool ContentPage::Close() {
+		if (current_view != nullptr) return current_view->Close(this);
 		else return false;
 	}
 	
-	bool ContentPage::Close() {
-		if (current_view != nullptr) return current_view->Close(this);
+	bool ContentPage::is_active() const {
+		if (current_view != nullptr) return (current_view->workbench_window->get_current_page() == this);
 		else return false;
 	}
 	

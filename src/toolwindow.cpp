@@ -30,6 +30,7 @@ namespace nova {
 		                                            : Qt::TopDockWidgetArea | Qt::BottomDockWidgetArea);
 		setContextMenuPolicy(Qt::CustomContextMenu);
 		
+		// The following actions are shown in the window's context menu
 		auto* hide_action = new QAction(NOVA_TR("&Hide Tool Window"), this);
 		menu->addAction(hide_action);
 		connect(hide_action, &QAction::triggered, this, &ToolWindow::hide);
@@ -59,6 +60,11 @@ namespace nova {
 			if (default_hidden) hide();
 			this->default_layout = (orientation == Qt::Vertical ? Qt::LeftDockWidgetArea : Qt::BottomDockWidgetArea);
 		}
+	}
+	
+	void ToolWindow::Activate() {
+		setVisible(true);
+		nested_main_window->centralWidget()->setFocus();
 	}
 	
 	QWidget* ToolWindow::get_content_widget() const {
@@ -113,10 +119,11 @@ namespace nova {
 			const bool old_state = action->blockSignals(true);
 			action->setChecked(is_visible);
 			action->blockSignals(old_state);
-			
-			if (is_visible) nested_main_window->centralWidget()->setFocus();
 		});
-		connect(action, &QAction::toggled, this, &ToolWindow::setVisible);
+		connect(action, &QAction::toggled, [this](bool is_toggled) {
+			if (is_toggled) Activate();
+			else setVisible(false);
+		});
 	}
 	
 	void ToolWindow::customContextMenuRequested2(const QPoint& pos) {

@@ -88,7 +88,7 @@ namespace nova {
 	}
 	
 	void QuickDialog::PositionAt(const QPoint& point) {
-		// Issues internal size calculation, because the size is not available yet.s
+		// Issues internal size calculation, because the size is not available yet.
 		layout()->update();
 		layout()->activate();
 		

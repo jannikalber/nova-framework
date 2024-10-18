@@ -37,10 +37,11 @@
 #include <QLabel>
 
 #include "ui_workbench.h"
-#include "searchbar.h"
 #include "toolwindow.h"
 #include "settings.h"
 #include "contentpage.h"
+#include "searchbar.h"
+#include "switcher.h"
 
 #define NOVA_CONTEXT "nova/workbench"
 #define NOVA_CURRENT_VIEW_STYLESHEET "QTabBar::tab { color: palette(text); }"
@@ -311,6 +312,16 @@ namespace nova {
 				
 				break;
 			
+			case Action_Switcher:
+				action = provider->ConstructAction(NOVA_TR("&Switcher..."));
+				action->setShortcut(QKeySequence("Ctrl+Tab"));
+				connect(action, &QAction::triggered, [this]() {
+					Switcher switcher(this);
+					switcher.exec();
+				});
+				
+				break;
+			
 			default:
 				return nullptr;
 		}
@@ -559,7 +570,7 @@ namespace nova {
 		
 		if (current != nullptr) {
 			ContentPage* page = dynamic_cast<ContentPage*>(current);
-			if (!page->IsActive()) page->Activate();
+			if (!page->is_active()) page->Activate();
 		}
 	}
 	
